@@ -1,0 +1,16 @@
+﻿import fs from "node:fs";
+const t = await (await fetch("http://127.0.0.1:9224/json")).json();
+const page = t.find(x => x.type === "page");
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+let id = 0; const pend = new Map();
+ws.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pend.has(m.id)) { const q = pend.get(m.id); pend.delete(m.id); m.error ? q.reject(m.error) : q.resolve(m.result); } };
+await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; pend.set(i, { resolve: res, reject: rej }); ws.send(JSON.stringify({ id: i, method, params })); });
+const ev = async x => (await send("Runtime.evaluate", { expression: x, awaitPromise: true, returnByValue: true })).result?.value;
+await ev(`document.querySelector('.modal')?.scrollIntoView()`);
+await ev(`[...document.querySelectorAll('.topbar button')].find(b=>b.textContent.trim()==='设置')?.click()`);
+await new Promise(r=>setTimeout(r,700));
+const shot = await send("Page.captureScreenshot", { format: "png" });
+fs.writeFileSync("settings-cdp.png", Buffer.from(shot.data, "base64"));
+console.log(await ev(`JSON.stringify({ row: !!document.querySelector('.setting-row'), label: document.querySelector('.setting-row strong')?.textContent, rect: document.querySelector('.modal')?.getBoundingClientRect() })`));
+ws.close();

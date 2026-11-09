@@ -11,7 +11,7 @@
 - **手动兜底**：手动添加、编辑、删除；金额精确到分，日期可选。
 - **今日合计**：今天 / 全部两个视图，自动汇总。
 - **本地持久化**：数据存 JSON，重启不丢；支持整体导出 / 导入（合并去重）。
-- **毛玻璃 UI**：半透明、模糊、柔和渐变、光影层次；右上角开关可关闭（关闭后改为实色卡片，低配设备更流畅），选择会记住。
+- **毛玻璃 UI**：半透明、模糊、柔和渐变、光影层次；在「设置 → 毛玻璃」开关可关闭（关闭后改为实色卡片，低配设备更流畅），选择会记住。
 - **错误兜底**：未配置 Key、麦克风失败、语音识别失败、模型返回异常、保存失败都有中文提示。
 
 ## 安装与运行
@@ -75,12 +75,41 @@ npm run tauri build    # 生产构建，产物在 src-tauri/target/release/
   - `speech.rs` Windows 语音识别
 - 本机构建备注：MinGW-w64 + `x86_64-pc-windows-gnu`；若 cargo 报临时文件权限问题，把 `TEMP` 指到工作区目录。
 
+## 语音识别报错 `0x800455A0` 怎么办
+
+这是系统缺少「中文（简体）语音识别」组件，不是软件 bug。语音只是输入方式之一，打字始终可用。
+
+1. 设置 → 时间和语言 → 语言和区域 → 中文(简体) → 语言选项 → 语音 → 安装「语音识别」。
+2. 或用管理员 PowerShell：
+
+```powershell
+Get-WindowsCapability -Online | Where-Object Name -like "*Speech*"
+Add-WindowsCapability -Online -Name "Language.Speech~~~zh-CN~0.0.1.0"
+```
+
+3. 设置 → 隐私和安全性 → 语音 → 打开「在线语音识别」。
+4. 重开 App 再点「说一句」。
+
 ## 已知限制
 
 - 语音识别依赖 Windows 中文语音包与麦克风权限；虚拟机/远程桌面里可能没有麦克风。
 - 解析质量取决于你选的模型；换模型或网络异常时会有提示，不会静默写错。
 - 只做支出，不做收入/转账/退款/多币种（MVP 范围）。
-- 未做代码签名，Windows 首次运行可能弹 SmartScreen，选择「更多信息 → 仍要运行」。
+- 安装包与 exe 已用自签名证书签名（`VibeAccount-CodeSigning.cer`）；因为根证书不在别人的「受信任的根证书颁发机构」里，别人机器首次运行仍会看到「未知发布者 / SmartScreen」提示，属正常现象，见下节。
+
+## 签名与信任
+
+本仓库的 `release/` 里附带了签名证书 `VibeAccount-CodeSigning.cer`（自签名，CN=Vibe Account，有效期 3 年）。
+
+- **自己这台机器想消掉警告**：双击 `.cer` → 安装证书 → 本地计算机 → 受信任的根证书颁发机构；再把证书装进「受信任的发布者」。之后 `Get-AuthenticodeSignature` 会显示 Valid。
+- **别人机器**：除非他们也安装这个 `.cer`，否则仍会提示未知发布者；自签名无法绕过这一点。
+- **想做到所有人免警告**：需要购买受信任的代码签名证书（DigiCert / Sectigo / Certum 等，通常需要个人或企业实名认证）；开源项目也可以申请 SignPath.io 或 Certum 的免费开源签名，审核通过后用它重签即可，命令不变：
+
+```powershell
+Set-AuthenticodeSignature -FilePath "Vibe Account-portable.exe" `
+  -Certificate (Get-ChildItem Cert:\CurrentUser\My\<thumbprint>) `
+  -TimestampServer "http://timestamp.digicert.com"
+```
 
 ## 验收自检
 

@@ -1,0 +1,14 @@
+﻿const t = await (await fetch("http://127.0.0.1:9223/json")).json();
+const page = t.find(x => x.type === "page");
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+let id = 0; const pend = new Map();
+ws.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pend.has(m.id)) { const q = pend.get(m.id); pend.delete(m.id); m.error ? q.reject(m.error) : q.resolve(m.result); } };
+await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; pend.set(i, { resolve: res, reject: rej }); ws.send(JSON.stringify({ id: i, method, params })); });
+const ev = async x => (await send("Runtime.evaluate", { expression: x, awaitPromise: true, returnByValue: true })).result?.value;
+console.log("header toggle:", await ev(`document.querySelectorAll('.topbar .toggle').length`));
+await ev(`[...document.querySelectorAll('.topbar button')].find(b=>b.textContent.trim()==='设置')?.click()`);
+await new Promise(r=>setTimeout(r,600));
+console.log("settings toggle:", await ev(`!!document.querySelector('.modal .setting-row .toggle')`));
+console.log(await ev(`JSON.stringify({glass: document.documentElement.dataset.glass, header: [...document.querySelectorAll('.topbar button')].map(b=>b.textContent.trim())})`));
+ws.close();

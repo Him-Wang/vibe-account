@@ -274,14 +274,6 @@ export default function App() {
           <button className="btn ghost" onClick={openSettings}>
             设置
           </button>
-          <button
-            className={`btn toggle ${cfg.glass ? "on" : ""}`}
-            onClick={toggleGlass}
-            title="低配设备可关闭毛玻璃提升流畅度"
-          >
-            <span className="switch" />
-            毛玻璃
-          </button>
         </div>
       </header>
 
@@ -426,6 +418,21 @@ export default function App() {
               Key 以明文保存在当前 Windows 用户的数据目录中，仅本机可读；不会写入日志，也不会随 JSON
               导出。
             </p>
+            <div className="setting-row">
+              <div>
+                <strong>毛玻璃</strong>
+                <span>半透明模糊与光影效果；低配设备关闭后可提升流畅度</span>
+              </div>
+              <button
+                className={`btn toggle ${cfg.glass ? "on" : ""}`}
+                onClick={toggleGlass}
+                title={cfg.glass ? "关闭毛玻璃（性能模式）" : "开启毛玻璃"}
+                aria-pressed={cfg.glass}
+                aria-label="毛玻璃开关"
+              >
+                <span className="switch" />
+              </button>
+            </div>
             <div className="modal-actions">
               <button className="btn ghost" onClick={() => setSettingsOpen(false)}>
                 取消
