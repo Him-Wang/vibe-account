@@ -1,0 +1,11 @@
+﻿const t = await (await fetch("http://127.0.0.1:9222/json")).json();
+const page = t.find(x => x.type === "page");
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+let id = 0; const pending = new Map();
+ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.reject(m.error) : p.resolve(m.result); } };
+await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+const send = (method, params = {}) => new Promise((resolve, reject) => { const mid = ++id; pending.set(mid, { resolve, reject }); ws.send(JSON.stringify({ id: mid, method, params })); });
+const evalx = async (expr) => (await send("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true })).result?.value;
+console.log("keys:", await evalx(`Object.keys(window).filter(k => k.toLowerCase().includes('tauri'))`));
+console.log("state:", JSON.stringify(await evalx(`window.__TAURI_INTERNALS__ ? window.__TAURI_INTERNALS__.invoke('load_state').then(v => ({ok:v})).catch(e => ({err:String(e)})) : 'no-internals'`)));
+ws.close();

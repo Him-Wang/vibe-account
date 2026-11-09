@@ -1,0 +1,10 @@
+﻿const t = await (await fetch("http://127.0.0.1:9222/json")).json();
+const p = t.find(x => x.type === "page");
+const ws = new WebSocket(p.webSocketDebuggerUrl);
+let id = 0; const pend = new Map();
+ws.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pend.has(m.id)) { const q = pend.get(m.id); pend.delete(m.id); m.error ? q.reject(m.error) : q.resolve(m.result); } };
+await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; pend.set(i, { resolve: res, reject: rej }); ws.send(JSON.stringify({ id: i, method, params })); });
+const ev = async x => (await send("Runtime.evaluate", { expression: x, awaitPromise: true, returnByValue: true })).result?.value;
+console.log(await ev(`JSON.stringify({ rows: document.querySelectorAll('.rows .row').length, total: document.querySelector('.total').textContent.trim(), glass: document.documentElement.dataset.glass })`));
+ws.close();
