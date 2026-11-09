@@ -1,11 +1,13 @@
 mod llm;
 mod speech;
 mod storage;
+mod whisper;
 
 use serde::Serialize;
 use std::path::PathBuf;
 use storage::{Config, Expense};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use whisper::{download_whisper_model, recognize_local, whisper_status};
 
 #[derive(Serialize)]
 pub struct AppState {
@@ -252,6 +254,9 @@ pub fn run() {
             update_expense,
             delete_expense,
             recognize_speech,
+            whisper_status,
+            download_whisper_model,
+            recognize_local,
             export_json,
             import_json
         ])

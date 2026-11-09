@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "./api";
-import type { Config, Draft, Expense } from "./types";
+import type { Config, Draft, Expense, WhisperStatus } from "./types";
 
 const CATEGORIES = ["餐饮", "交通", "购物", "娱乐", "居家", "医疗", "教育", "人情", "其他"];
 
@@ -35,6 +35,7 @@ export default function App() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
+  const [whisper, setWhisper] = useState<WhisperStatus | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -67,6 +68,44 @@ export default function App() {
     reload().catch((e) => notify(errText(e)));
   }, [reload, notify]);
 
+  // Local speech model: download once on first launch, then never again.
+  useEffect(() => {
+    let cancelled = false;
+    let timer: number | undefined;
+    let attempts = 0;
+    let sawDownloading = false;
+
+    const tick = async () => {
+      try {
+        const st = await api.whisperStatus();
+        if (cancelled) return;
+        setWhisper(st);
+        if (st.downloading) sawDownloading = true;
+
+        if (st.model_present) {
+          if (sawDownloading) notify("本地语音已就绪，以后识别不用联网");
+          return;
+        }
+        if (!st.downloading && attempts < 3) {
+          attempts += 1;
+          if (attempts === 1) notify("首次使用：正在自动下载本地语音模型（约 60MB，只需一次）");
+          api.downloadWhisperModel().catch((e) => {
+            if (!cancelled) notify(errText(e));
+          });
+        }
+        if (attempts < 3) timer = window.setTimeout(tick, 1200);
+      } catch {
+        /* local speech is optional; typing always works */
+      }
+    };
+
+    tick();
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [notify]);
+
   const today = todayStr();
   const total = useMemo(
     () => expenses.filter((e) => e.date === today).reduce((a, e) => a + e.amount_cents, 0),
@@ -76,6 +115,11 @@ export default function App() {
     () => (showAll ? expenses : expenses.filter((e) => e.date === today)),
     [expenses, showAll, today]
   );
+
+  const whisperPct =
+    whisper && whisper.total > 0
+      ? Math.min(99, Math.round((whisper.downloaded / whisper.total) * 100))
+      : 0;
 
   async function submit() {
     if (!text.trim() || busy) return;
@@ -102,9 +146,28 @@ export default function App() {
     if (listening) return;
     setListening(true);
     try {
-      const t = await api.recognizeSpeech();
-      setText((prev) => (prev ? `${prev}，${t}` : t));
-      notify("已转成文字，确认后点「解析并记账」");
+      let textIn: string;
+      let via = "system";
+      if (whisper?.model_present && whisper.binary_present) {
+        try {
+          textIn = await api.recognizeLocal();
+          via = "local";
+        } catch (localErr) {
+          try {
+            textIn = await api.recognizeSpeech();
+          } catch (sysErr) {
+            throw new Error(`${errText(localErr)} ${errText(sysErr)}`);
+          }
+        }
+      } else {
+        textIn = await api.recognizeSpeech();
+      }
+      setText((prev) => (prev ? `${prev}，${textIn}` : textIn));
+      notify(
+        via === "local"
+          ? "已用本地语音转成文字（离线）"
+          : "已转成文字，确认后点「解析并记账」"
+      );
     } catch (e) {
       notify(errText(e));
     } finally {
@@ -317,7 +380,13 @@ export default function App() {
             </button>
           </div>
           <p className="hint">
-            语音识别使用 Windows 内置能力（离线，无需联网）· 识别失败时可直接打字 · Ctrl + Enter 快速记账
+            {whisper?.model_present
+              ? "本地语音已就绪（离线识别，无需联网）· 识别失败时可直接打字 · Ctrl + Enter 快速记账"
+              : whisper?.downloading
+              ? `正在准备本地语音 ${whisperPct}%（约 60MB，只需一次）· 期间可直接打字记账`
+              : whisper?.binary_present === false
+              ? "本地语音组件缺失 · 可直接打字记账"
+              : "语音识别使用 Windows 内置能力（离线）· 识别失败时可直接打字 · Ctrl + Enter 快速记账"}
           </p>
         </section>
 

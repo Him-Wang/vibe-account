@@ -25,3 +25,12 @@ export interface AppState {
   config: Config;
   has_key: boolean;
 }
+
+export interface WhisperStatus {
+  model_present: boolean;
+  binary_present: boolean;
+  downloading: boolean;
+  downloaded: number;
+  total: number;
+  model_size: number;
+}

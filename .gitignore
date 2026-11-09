@@ -5,3 +5,5 @@ src-tauri/gen
 .tmp
 release
 *.log
+
+*.zip
