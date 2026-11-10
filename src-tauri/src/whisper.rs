@@ -237,17 +237,26 @@ pub async fn recognize_local(app: AppHandle) -> Result<String, String> {
         .map_err(|e| format!("录音线程异常：{e}"))??;
 
     let output = tauri::async_runtime::spawn_blocking(move || {
-        std::process::Command::new(&bin)
-            .arg("-m")
+        let mut cmd = std::process::Command::new(&bin);
+        cmd.arg("-m")
             .arg(&model)
             .arg("-f")
             .arg(&wav_arg)
             .arg("-l")
             .arg("zh")
+            // 用简体中文作提示，抑制 whisper 输出繁体
+            .arg("--prompt")
+            .arg("以下是简体中文普通话的句子。")
             .arg("-nt")
             .arg("-t")
-            .arg("4")
-            .output()
+            .arg("4");
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // CREATE_NO_WINDOW：避免弹出 whisper-cli 的黑色控制台窗口
+            cmd.creation_flags(0x08000000);
+        }
+        cmd.output()
     })
     .await
     .map_err(|e| format!("识别线程异常：{e}"))?
