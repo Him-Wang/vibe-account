@@ -16,11 +16,11 @@
 
 ## 安装与运行
 
-**安装版**：双击 `Vibe Account_0.1.0_x64-setup.exe`，按向导安装（当前用户，不需要管理员）。开始菜单会出现「Vibe Account」。
+**便携版（当前发布形态）**：把 `Vibe Account.exe`、`WebView2Loader.dll` 和 `whisper\` 文件夹（含 `whisper-cli.exe` 与 `models\ggml-small-q5_1.bin`，约 190 MB）放在**同一个文件夹**里，双击 exe 运行。数据默认在 `%APPDATA%\com.vibeaccount.app\`；若该目录不可写，会自动放到 exe 同级的 `data\` 文件夹。
 
-**免安装版**：把 `Vibe Account-portable.exe`、`WebView2Loader.dll` 和 `whisper\` 文件夹（含 `whisper-cli.exe` 与 `models\ggml-base-q5_1.bin`，约 60 MB）放在**同一个文件夹**里，双击 exe 运行。数据默认在 `%APPDATA%\com.vibeaccount.app\`；若该目录不可写，会自动放到 exe 同级的 `data\` 文件夹。
+> 安装包（NSIS）暂时停发，当前只提供便携版；`release\Vibe Account-portable\` 是完整可运行目录，拷走即可。
 
-系统要求：Windows 10/11 x64，WebView2 运行时（Win11 自带；Win10 若缺失，安装包会自动装）。
+系统要求：Windows 10/11 x64，WebView2 运行时（Win11 自带；Win10 若缺失，请先安装 WebView2）。
 
 ## 首次配置（必须）
 
@@ -40,7 +40,7 @@
 
 ## 使用
 
-- 语音：点「说一句」开始，按钮变成「点一下停止」——再点一下立即结束录音并转文字（不等 15 秒上限）；文字进入输入框，确认后解析。模型随安装包提供，不需要下载。
+- 语音：点「说一句」开始，按钮变成「点一下停止」——再点一下立即结束录音并转文字（不等 15 秒上限）；文字进入输入框，确认后解析。模型随包提供，不需要下载。
 - 键盘：`Ctrl + Enter` 直接解析。
 - 编辑 / 删除：每条记录右侧的铅笔 / 垃圾桶图标。
 - 导出：右上角「导出」下载 `vibe-account-YYYY-MM-DD.json`（只含账目，不含 Key）。
@@ -53,7 +53,7 @@
 | 账目 `data.json` | `%APPDATA%\com.vibeaccount.app\` |
 | 配置 `config.json` | 同上 |
 | API Key `credentials.txt` | 同上（明文，仅当前 Windows 用户可读） |
-| 语音模型 `models\ggml-base-q5_1.bin` | 安装目录 `whisper\models\`（随包提供，约 57 MB）；仅精简构建缺失时才会下载到数据目录 |
+| 语音模型 `models\ggml-small-q5_1.bin` | 与 exe 同级的 `whisper\models\`（随包提供，约 190 MB）；仅精简构建缺失时才会下载到数据目录 |
 | WebView2 缓存 | `%LOCALAPPDATA%\com.vibeaccount.app\` |
 
 - 只有「解析并记账」会把文字发给你配置的模型服务；语音识别在本机完成，模型随包提供，识别过程不联网。
@@ -76,11 +76,11 @@ npm run tauri build    # 生产构建，产物在 src-tauri/target/release/
   - `speech.rs` Windows 语音识别（兜底）
   - `whisper.rs` 本地 whisper.cpp：模型下载、cpal 录音、转写
 - 本机构建备注：MinGW-w64 + `x86_64-pc-windows-gnu`；若 cargo 报临时文件权限问题，把 `TEMP` 指到工作区目录。
-- 语音资源：`src-tauri/whisper/whisper-cli.exe`（静态链接）与 `src-tauri/whisper/models/ggml-base-q5_1.bin`；打包时由 `tauri.conf.json` 的 `resources` 一起带进安装包。
+- 语音资源：`src-tauri/whisper/whisper-cli.exe`（静态链接）与 `src-tauri/whisper/models/ggml-small-q5_1.bin`；便携版把这些放在 exe 同级的 `whisper\` 目录。
 
 ## 语音识别：本地优先
 
-默认使用内置 whisper.cpp（`whisper\whisper-cli.exe`）+ 内置的 `ggml-base-q5_1` 模型，完全离线，不需要安装 Windows 语音包，也不需要首次下载。
+默认使用内置 whisper.cpp（`whisper\whisper-cli.exe`）+ 内置的 `ggml-small-q5_1` 模型，完全离线，不需要安装 Windows 语音包，也不需要首次下载。
 
 - 启动后右下角直接显示「本地语音已就绪（离线识别，无需联网）」。
 - 只有精简构建（去掉了模型）才会在启动时下载；下载失败时短暂回退 Windows 识别，若系统也没装中文语音包会提示 `0x800455A0`。此时打字始终可用。
@@ -95,8 +95,9 @@ Add-WindowsCapability -Online -Name "Language.Speech~~~zh-CN~0.0.1.0"
 
 ## 已知限制
 
-- 安装包因为内置了语音模型，体积约 60 MB；免安装版必须连 `whisper\models\` 一起拷贝。
-- 本地识别用 base 模型，安静环境、普通话说清楚时效果最好；嘈杂环境可能识别不准，可改打字。
+- 便携版因为内置了语音模型，整个文件夹约 196 MB；必须保持 `Vibe Account.exe`、`WebView2Loader.dll`、`whisper\` 的相对位置不变。
+- 本地识别用 small 模型（比 base 明显准，仍可能偶发听错），安静环境、普通话说清楚时效果最好；嘈杂环境可改打字。
+- 识别结果已自动把繁体转成简体；偶发错字（尤其数字）请在解析前顺手改一下。
 - 解析质量取决于你选的模型；换模型或网络异常时会有提示，不会静默写错。
 - 只做支出，不做收入/转账/退款/多币种（MVP 范围）。
 - 安装包与 exe 已用自签名证书签名（`VibeAccount-CodeSigning.cer`）；因为根证书不在别人的「受信任的根证书颁发机构」里，别人机器首次运行仍会看到「未知发布者 / SmartScreen」提示，属正常现象，见下节。
@@ -119,7 +120,7 @@ Set-AuthenticodeSignature -FilePath "Vibe Account-portable.exe" `
 
 | 要求 | 结果 |
 | --- | --- |
-| 能安装启动 | ✅ NSIS 安装包 + 免安装 exe |
+| 能启动运行 | ✅ 便携版 exe（当前发布形态） |
 | 一段话解析多笔并正确合计 | ✅ 4 笔 / ¥235.00（自动化验证） |
 | 记录可编辑删除 | ✅ 18→20（合计 237）、删除后 217 |
 | 重启后数据还在 | ✅ 重启后 3 条 / ¥217.00 |

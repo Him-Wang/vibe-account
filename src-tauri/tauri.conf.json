@@ -22,7 +22,7 @@
     "resources": [
       "WebView2Loader.dll",
       "whisper/whisper-cli.exe",
-      "whisper/models/ggml-base-q5_1.bin"
+      "whisper/models/ggml-small-q5_1.bin"
     ],
     "windows": {
       "nsis": {

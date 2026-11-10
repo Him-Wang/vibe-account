@@ -13,10 +13,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 
-const MODEL_FILE: &str = "ggml-base-q5_1.bin";
+const MODEL_FILE: &str = "ggml-small-q5_1.bin";
 const MODEL_URLS: [&str; 2] = [
-    "https://hf-mirror.com/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin",
-    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base-q5_1.bin",
+    "https://hf-mirror.com/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
+    "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q5_1.bin",
 ];
 
 static DOWNLOADING: AtomicBool = AtomicBool::new(false);
@@ -282,7 +282,8 @@ pub async fn recognize_local(app: AppHandle) -> Result<String, String> {
     if text.is_empty() {
         return Err("没有听清。请靠近麦克风再说一次，或直接输入文字。".to_string());
     }
-    Ok(text)
+    // whisper 对普通话偶尔会输出繁体，统一转成简体
+    Ok(zhconv::zhconv(&text, zhconv::Variant::ZhHans))
 }
 
 struct Sink {
@@ -407,6 +408,13 @@ fn record_wav(path: &Path) -> Result<(), String> {
     }
 
     let pcm = resample(&samples, rate, 16_000);
+    // 音量归一化，避免麦克风声音太小导致识别率低
+    let peak = pcm.iter().fold(0f32, |m, v| m.max(v.abs()));
+    let pcm: Vec<f32> = if peak > 0.0001 {
+        pcm.iter().map(|v| v * (0.9 / peak)).collect()
+    } else {
+        pcm
+    };
     write_wav(path, &pcm, 16_000)
 }
 

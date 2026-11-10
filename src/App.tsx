@@ -89,7 +89,7 @@ export default function App() {
         }
         if (!st.downloading && attempts < 3) {
           attempts += 1;
-          if (attempts === 1) notify("首次使用：正在自动下载本地语音模型（约 60MB，只需一次）");
+          if (attempts === 1) notify("首次使用：正在自动下载本地语音模型（约 190MB，只需一次）");
           api.downloadWhisperModel().catch((e) => {
             if (!cancelled) notify(errText(e));
           });
@@ -394,7 +394,7 @@ export default function App() {
             {whisper?.model_present
               ? "本地语音已就绪（离线识别，无需联网）· 识别失败时可直接打字 · Ctrl + Enter 快速记账"
               : whisper?.downloading
-              ? `正在准备本地语音 ${whisperPct}%（约 60MB，只需一次）· 期间可直接打字记账`
+              ? `正在准备本地语音 ${whisperPct}%（约 190MB，只需一次）· 期间可直接打字记账`
               : whisper?.binary_present === false
               ? "本地语音组件缺失 · 可直接打字记账"
               : "语音识别使用 Windows 内置能力（离线）· 识别失败时可直接打字 · Ctrl + Enter 快速记账"}
