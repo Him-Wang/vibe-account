@@ -1,7 +1,8 @@
-//! Local, offline speech-to-text via a bundled whisper.cpp binary.
+//! Local, offline speech-to-text via a bundled whisper.cpp binary and model.
 //!
-//! The model (~60 MB) is downloaded once on first launch and cached under the
-//! app data directory; after that recognition never touches the network.
+//! The `ggml-base-q5_1` model ships inside the installer (next to the binary).
+//! If a build omits it, the model is downloaded once and cached under the app
+//! data directory instead; recognition itself never touches the network.
 
 use serde::Serialize;
 use std::fs::{self, File};
@@ -32,7 +33,33 @@ pub struct WhisperStatus {
     model_size: u64,
 }
 
+fn bundled_model_path(app: &AppHandle) -> Option<PathBuf> {
+    let mut candidates = Vec::new();
+    if let Ok(dir) = app.path().resource_dir() {
+        candidates.push(dir.join("whisper").join("models").join(MODEL_FILE));
+        candidates.push(dir.join("models").join(MODEL_FILE));
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            candidates.push(parent.join("whisper").join("models").join(MODEL_FILE));
+            candidates.push(parent.join("models").join(MODEL_FILE));
+        }
+    }
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("whisper")
+            .join("models")
+            .join(MODEL_FILE),
+    );
+    candidates
+        .into_iter()
+        .find(|p| fs::metadata(p).map(|m| m.len() > 1_000_000).unwrap_or(false))
+}
+
 pub fn model_path(app: &AppHandle) -> Result<PathBuf, String> {
+    if let Some(p) = bundled_model_path(app) {
+        return Ok(p);
+    }
     Ok(crate::storage::data_dir(app)?
         .join("models")
         .join(MODEL_FILE))

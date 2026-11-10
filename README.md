@@ -6,7 +6,7 @@
 
 ## 功能
 
-- **语音记账**：点「说一句」用内置的本地 Whisper（whisper.cpp）离线识别，首次启动自动下载约 60 MB 模型，之后不再联网；模型未就绪时自动回退 Windows 内置识别，仍不可用可直接打字。
+- **语音记账**：点「说一句」用内置的本地 Whisper（whisper.cpp + 内置模型）完全离线识别，装好就能用，不用联网、也不用装 Windows 语音包；模型缺失时自动回退 Windows 识别，仍不可用可直接打字。
 - **一句话拆多笔**：调用你配置的 OpenAI 兼容大模型，把「早饭12，打车25，中午请同事吃饭180」拆成 4 条记录。
 - **手动兜底**：手动添加、编辑、删除；金额精确到分，日期可选。
 - **今日合计**：今天 / 全部两个视图，自动汇总。
@@ -18,7 +18,7 @@
 
 **安装版**：双击 `Vibe Account_0.1.0_x64-setup.exe`，按向导安装（当前用户，不需要管理员）。开始菜单会出现「Vibe Account」。
 
-**免安装版**：把 `Vibe Account-portable.exe`、`WebView2Loader.dll` 和 `whisper\` 文件夹（含 `whisper-cli.exe`）放在**同一个文件夹**里，双击 exe 运行。首次启动会在 `%APPDATA%\com.vibeaccount.app\` 建数据目录并下载语音模型；若该目录不可写，会自动把数据和模型放在 exe 同级的 `data\` 文件夹。
+**免安装版**：把 `Vibe Account-portable.exe`、`WebView2Loader.dll` 和 `whisper\` 文件夹（含 `whisper-cli.exe` 与 `models\ggml-base-q5_1.bin`，约 60 MB）放在**同一个文件夹**里，双击 exe 运行。数据默认在 `%APPDATA%\com.vibeaccount.app\`；若该目录不可写，会自动放到 exe 同级的 `data\` 文件夹。
 
 系统要求：Windows 10/11 x64，WebView2 运行时（Win11 自带；Win10 若缺失，安装包会自动装）。
 
@@ -40,7 +40,7 @@
 
 ## 使用
 
-- 语音：点「说一句」→ 说完自动停止（本地识别最长 15 秒）→ 文字进入输入框 → 确认后解析。首次启动后台下载模型（约 60 MB），期间可直接打字或用 Windows 识别兜底。
+- 语音：点「说一句」→ 说完自动停止（本地识别最长 15 秒）→ 文字进入输入框 → 确认后解析。模型随安装包提供，首次使用不需要下载。
 - 键盘：`Ctrl + Enter` 直接解析。
 - 编辑 / 删除：每条记录右侧的铅笔 / 垃圾桶图标。
 - 导出：右上角「导出」下载 `vibe-account-YYYY-MM-DD.json`（只含账目，不含 Key）。
@@ -53,10 +53,10 @@
 | 账目 `data.json` | `%APPDATA%\com.vibeaccount.app\` |
 | 配置 `config.json` | 同上 |
 | API Key `credentials.txt` | 同上（明文，仅当前 Windows 用户可读） |
-| 语音模型 `models\ggml-base-q5_1.bin` | 同上（约 57 MB，首次启动下载一次） |
+| 语音模型 `models\ggml-base-q5_1.bin` | 安装目录 `whisper\models\`（随包提供，约 57 MB）；仅精简构建缺失时才会下载到数据目录 |
 | WebView2 缓存 | `%LOCALAPPDATA%\com.vibeaccount.app\` |
 
-- 只有「解析并记账」会把文字发给你配置的模型服务；语音识别在本机完成，首次启动只从 `hf-mirror.com` 下载一次语音模型，不上传任何数据。
+- 只有「解析并记账」会把文字发给你配置的模型服务；语音识别在本机完成，模型随包提供，识别过程不联网。
 - Key 不写日志、不导出、不随 JSON 泄露；但它是**明文文件**，请勿把数据目录发给别人。
 - 没有账号、没有云同步、没有遥测。
 - 便携版可用环境变量覆盖位置：`VIBE_DATA_DIR`、`VIBE_WEBVIEW_DIR`。
@@ -76,17 +76,15 @@ npm run tauri build    # 生产构建，产物在 src-tauri/target/release/
   - `speech.rs` Windows 语音识别（兜底）
   - `whisper.rs` 本地 whisper.cpp：模型下载、cpal 录音、转写
 - 本机构建备注：MinGW-w64 + `x86_64-pc-windows-gnu`；若 cargo 报临时文件权限问题，把 `TEMP` 指到工作区目录。
-- 语音资源：`src-tauri/whisper/whisper-cli.exe`（静态链接）；打包时由 `tauri.conf.json` 的 `resources` 带进安装包。模型不打进包，首次启动下载。
+- 语音资源：`src-tauri/whisper/whisper-cli.exe`（静态链接）与 `src-tauri/whisper/models/ggml-base-q5_1.bin`；打包时由 `tauri.conf.json` 的 `resources` 一起带进安装包。
 
 ## 语音识别：本地优先
 
-默认使用内置 whisper.cpp（`whisper\whisper-cli.exe`）+ 首次启动下载的 `ggml-base-q5_1` 模型，完全离线，不需要安装 Windows 语音包。
+默认使用内置 whisper.cpp（`whisper\whisper-cli.exe`）+ 内置的 `ggml-base-q5_1` 模型，完全离线，不需要安装 Windows 语音包，也不需要首次下载。
 
-- 启动后右下角会显示「正在准备本地语音 xx%」，完成后显示「本地语音已就绪（离线识别，无需联网）」。
-- 模型下载失败（断网/镜像不可达）时，会短暂回退到 Windows 内置识别；如果系统也没装中文语音包，会提示 `0x800455A0`。
-- 这时语音只是不可用，打字始终可用；修好网络后重启 App 会自动重试下载。
-
-如果确实想用 Windows 识别（例如公司网络限制下载），按系统提示安装组件即可：设置 → 时间和语言 → 语言和区域 → 中文(简体) → 语言选项 → 语音 → 安装「语音识别」；或用管理员 PowerShell：
+- 启动后右下角直接显示「本地语音已就绪（离线识别，无需联网）」。
+- 只有精简构建（去掉了模型）才会在启动时下载；下载失败时短暂回退 Windows 识别，若系统也没装中文语音包会提示 `0x800455A0`。此时打字始终可用。
+- 想强制用 Windows 识别（例如公司策略），按系统提示安装组件即可：设置 → 时间和语言 → 语言和区域 → 中文(简体) → 语言选项 → 语音 → 安装「语音识别」；或用管理员 PowerShell：
 
 ```powershell
 Get-WindowsCapability -Online | Where-Object Name -like "*Speech*"
@@ -97,7 +95,7 @@ Add-WindowsCapability -Online -Name "Language.Speech~~~zh-CN~0.0.1.0"
 
 ## 已知限制
 
-- 语音首次使用前需要联网下载约 60 MB 模型；完全离线的新机器上语音不可用，但打字记账不受影响。
+- 安装包因为内置了语音模型，体积约 60 MB；免安装版必须连 `whisper\models\` 一起拷贝。
 - 本地识别用 base 模型，安静环境、普通话说清楚时效果最好；嘈杂环境可能识别不准，可改打字。
 - 解析质量取决于你选的模型；换模型或网络异常时会有提示，不会静默写错。
 - 只做支出，不做收入/转账/退款/多币种（MVP 范围）。

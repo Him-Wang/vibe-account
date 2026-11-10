@@ -19,7 +19,11 @@
     "active": true,
     "targets": ["nsis"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico"],
-    "resources": ["WebView2Loader.dll", "whisper/whisper-cli.exe"],
+    "resources": [
+      "WebView2Loader.dll",
+      "whisper/whisper-cli.exe",
+      "whisper/models/ggml-base-q5_1.bin"
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser",

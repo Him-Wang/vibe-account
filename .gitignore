@@ -7,3 +7,5 @@ release
 *.log
 
 *.zip
+
+src-tauri/whisper/models/*.bin
