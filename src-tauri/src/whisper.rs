@@ -22,6 +22,7 @@ const MODEL_URLS: [&str; 2] = [
 static DOWNLOADING: AtomicBool = AtomicBool::new(false);
 static DOWNLOADED: AtomicU64 = AtomicU64::new(0);
 static DOWNLOAD_TOTAL: AtomicU64 = AtomicU64::new(0);
+static STOP_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Serialize)]
 pub struct WhisperStatus {
@@ -213,7 +214,13 @@ async fn download_inner(app: &AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn stop_listening() {
+    STOP_REQUESTED.store(true, Ordering::Relaxed);
+}
+
+#[tauri::command]
 pub async fn recognize_local(app: AppHandle) -> Result<String, String> {
+    STOP_REQUESTED.store(false, Ordering::Relaxed);
     let model = model_path(&app)?;
     if fs::metadata(&model).map(|m| m.len() > 1_000_000).unwrap_or(false) == false {
         return Err("本地语音模型还没准备好。请稍等下载完成，或直接用文字输入。".to_string());
@@ -373,7 +380,10 @@ fn record_wav(path: &Path) -> Result<(), String> {
         .map_err(|e| format!("无法开始录音：{e}"))?;
 
     let start = Instant::now();
-    while !done.load(Ordering::Relaxed) && start.elapsed() < Duration::from_secs(16) {
+    while !done.load(Ordering::Relaxed)
+        && !STOP_REQUESTED.load(Ordering::Relaxed)
+        && start.elapsed() < Duration::from_secs(16)
+    {
         std::thread::sleep(Duration::from_millis(80));
     }
     drop(stream);

@@ -7,7 +7,7 @@ use serde::Serialize;
 use std::path::PathBuf;
 use storage::{Config, Expense};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
-use whisper::{download_whisper_model, recognize_local, whisper_status};
+use whisper::{download_whisper_model, recognize_local, stop_listening, whisper_status};
 
 #[derive(Serialize)]
 pub struct AppState {
@@ -257,6 +257,7 @@ pub fn run() {
             whisper_status,
             download_whisper_model,
             recognize_local,
+            stop_listening,
             export_json,
             import_json
         ])

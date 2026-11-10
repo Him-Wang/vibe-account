@@ -9,6 +9,7 @@ export const api = {
   deleteExpense: (id: string) => invoke<void>("delete_expense", { id }),
   recognizeSpeech: () => invoke<string>("recognize_speech"),
   recognizeLocal: () => invoke<string>("recognize_local"),
+  stopListening: () => invoke<void>("stop_listening"),
   whisperStatus: () => invoke<WhisperStatus>("whisper_status"),
   downloadWhisperModel: () => invoke<void>("download_whisper_model"),
   saveConfig: (config: Config) => invoke<void>("save_config", { config }),

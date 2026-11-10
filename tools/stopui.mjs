@@ -1,0 +1,18 @@
+﻿const t = await (await fetch("http://127.0.0.1:9235/json")).json();
+const page = t.find(x => x.type === "page");
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+let id = 0; const pend = new Map();
+ws.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pend.has(m.id)) { const q = pend.get(m.id); pend.delete(m.id); m.error ? q.reject(m.error) : q.resolve(m.result); } };
+await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });
+const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; pend.set(i, { resolve: res, reject: rej }); ws.send(JSON.stringify({ id: i, method, params })); });
+const ev = async x => (await send("Runtime.evaluate", { expression: x, awaitPromise: true, returnByValue: true })).result?.value;
+const state = `JSON.stringify({btn: document.querySelector('.btn.mic').textContent.trim(), disabled: document.querySelector('.btn.mic').disabled, pill: document.querySelector('.pill').textContent})`;
+console.log("before", await ev(state));
+await ev(`document.querySelector('.btn.mic').click()`);
+await new Promise(r=>setTimeout(r,1200));
+console.log("listening", await ev(state));
+await ev(`document.querySelector('.btn.mic').click()`);
+await new Promise(r=>setTimeout(r,800));
+console.log("after", await ev(state));
+console.log("toast", await ev(`document.querySelector('.toast')?.textContent`));
+ws.close();

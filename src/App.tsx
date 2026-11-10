@@ -35,6 +35,7 @@ export default function App() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [whisper, setWhisper] = useState<WhisperStatus | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -143,7 +144,12 @@ export default function App() {
   }
 
   async function startVoice() {
-    if (listening) return;
+    if (transcribing) return;
+    if (listening) {
+      setTranscribing(true);
+      api.stopListening().catch(() => {});
+      return;
+    }
     setListening(true);
     try {
       let textIn: string;
@@ -172,6 +178,7 @@ export default function App() {
       notify(errText(e));
     } finally {
       setListening(false);
+      setTranscribing(false);
     }
   }
 
@@ -344,7 +351,7 @@ export default function App() {
         <section className="card glass composer">
           <div className="card-head">
             <h2>今天花了什么？</h2>
-            <span className="pill">{listening ? "正在听…" : "语音 / 文字"}</span>
+            <span className="pill">{transcribing ? "识别中…" : listening ? "正在听…" : "语音 / 文字"}</span>
           </div>
           <textarea
             value={text}
@@ -360,11 +367,15 @@ export default function App() {
             <button
               className={`btn mic ${listening ? "listening" : ""}`}
               onClick={startVoice}
-              disabled={listening || busy}
+              disabled={busy || transcribing}
             >
-              {listening ? (
+              {transcribing ? (
                 <>
-                  <span className="pulse" /> 正在聆听…
+                  <span className="pulse" /> 识别中…
+                </>
+              ) : listening ? (
+                <>
+                  <span className="pulse" /> 点一下停止
                 </>
               ) : (
                 <>
