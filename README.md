@@ -135,16 +135,30 @@ gradlew.bat assembleDebug    # Windows
 
 **已配置权限**：`INTERNET`（拉模型）、`RECORD_AUDIO` / `MODIFY_AUDIO_SETTINGS`（语音）、`READ_EXTERNAL_STORAGE`（旧设备读图）。麦克风属于危险权限，App 首次录音时会弹系统授权框——这是正常行为，允许即可。
 
-### iOS：在 macOS 上编译 + 自签名安装
+### iOS：安装到手机（自签名）
 
-iOS 无法在 Windows 上打包，以下步骤在一台 **Mac** 上完成。
+有两种方式。**方式一最简单、无需 Mac**，推荐直接用现成 IPA 的用户；**方式二**适合想自己用 Xcode 编译的人。
 
-#### 前置条件
+#### 方式一：拿现成 IPA 自签名侧载（无需 Mac，推荐）
+
+Release 里的 `suikouji-unsigned.ipa` 是未签名包，用免费 Apple ID 即可签到手机上：
+
+1. 电脑（Windows 或 Mac 都行）安装一个侧载工具：**AltStore**、**Sideloadly** 或 **EasySign**，任选其一。
+2. 用你的**免费 Apple ID** 登录工具（不需要付费开发者账号）。
+3. 选择 `suikouji-unsigned.ipa`，点签名 / 安装，数据线把 iPhone 连到电脑，按提示装到手机。
+4. 首次打开前，到 iPhone **设置 → 通用 → VPN 与设备管理（或「描述文件与设备管理」）→ 选你的 Apple ID → 信任**。
+5. 免费签名**有效期 7 天**，到期后 App 打不开，重新用工具签一次即可。
+
+#### 方式二：在 macOS 上用 Xcode 编译 + 自签名
+
+iOS 自己打包无法在 Windows 上完成，以下步骤在一台 **Mac** 上做。
+
+##### 前置条件
 
 - macOS + [Xcode](https://apps.apple.com/cn/app/xcode/id497799835)（App Store 安装，含 iOS SDK）+ Xcode Command Line Tools（`xcode-select --install`）。
 - 一个**免费的 Apple ID** 即可做自签名（不需要付费开发者账号）。
 
-#### 步骤
+##### 步骤
 
 1. 在 Mac 上 clone 仓库并安装依赖：
 
@@ -153,10 +167,10 @@ iOS 无法在 Windows 上打包，以下步骤在一台 **Mac** 上完成。
    cd vibe-account
    npm install
    npm run cap:sync
-   npx cap open ios        # 用 Xcode 打开 ios/App/App.xcworkspace
+   npx cap open ios        # 用 Xcode 打开 ios/App/App.xcodeproj
    ```
 
-   注意：打开的是 `ios/App/App.xcworkspace`（Swift Package Manager 依赖），不是 `.xcodeproj`。
+   注意：Capacitor 8 用 Swift Package Manager，没有独立的 `App.xcworkspace`，打开的是 `ios/App/App.xcodeproj`。命令行构建也用 `-project App.xcodeproj`（不是 `-workspace`）。
 
 2. 在 Xcode 里选中左侧 **App** target → **Signing & Capabilities**：
    - 勾选 **Automatically manage signing**。
@@ -181,7 +195,7 @@ iOS 无法在 Windows 上打包，以下步骤在一台 **Mac** 上完成。
 
   ```bash
   cd ios/App
-  xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+  xcodebuild -project App.xcodeproj -scheme App -configuration Release \
     -archivePath build/App.xcarchive archive
   xcodebuild -exportArchive -archivePath build/App.xcarchive \
     -exportPath build/Export -exportOptionsPlist exportOptions.plist
