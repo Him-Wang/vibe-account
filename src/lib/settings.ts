@@ -2,16 +2,10 @@ import { useSyncExternalStore } from "react";
 import type { Settings } from "../types";
 import { readKey, removeKey, writeKey } from "./storage";
 
-// 公开演示用的 Workers AI 中转。它只能调用这台 Worker 上的免费模型，
-// 口令会出现在前端里，等于“公开的演示额度”，不要把它当成私密 Key。
-const PUBLIC_WORKER_BASE = "https://suikouji-ai.crushlens.workers.dev/v1";
-const PUBLIC_WORKER_MODEL = "workers-ai";
-const PUBLIC_WORKER_TOKEN = "27802adcfda14cc398930f31d286fc6f";
-
 const DEFAULTS: Settings = {
-  baseUrl: PUBLIC_WORKER_BASE,
-  model: PUBLIC_WORKER_MODEL,
-  apiKey: PUBLIC_WORKER_TOKEN,
+  baseUrl: "https://api.deepseek.com/v1",
+  model: "deepseek-chat",
+  apiKey: "",
   glass: true,
   aiMockMode: "auto",
   visionPreset: "off",

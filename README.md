@@ -4,7 +4,7 @@
 
 对着麦克风说「午饭 35，打车 18，买咖啡 22」，随口记会拆成三笔、分好类、记进今天。也可以扫小票（浏览器里跑 OCR）、把喜欢的东西抠成贴纸，贴进自己的贴册。
 
-数据只存在浏览器 `localStorage`，没有服务端，随时导出或清空。默认已经接好一个公开演示用的 Cloudflare Worker（文本解析 / 看账），不需要自己准备 Key。
+数据只存在浏览器 `localStorage`，没有服务端，随时导出或清空。默认不接任何外部 AI，本地记账、扫票 OCR、抠图、语音都能直接用；想用 AI 再自己填接口。
 
 ## 四个入口
 
@@ -47,7 +47,7 @@ npm run preview
 
 ## AI 与识别（都可选）
 
-默认已经预置公开演示 Worker，开箱能「看账」和做文本解析；下面这些也都能自己换：
+默认不接任何外部 AI；下面这些接口都是可选的，填了才会启用：
 
 - **语音与文字解析**：把一句话拆成多笔；不填就走本地规则，填了才会把这句话发给该接口。
 - **小票视觉核对**：不启用时，扫票只用浏览器里的 Tesseract 本地 OCR；启用后先在本机读一遍字，再把压缩后的图片和文字交给视觉模型核对。图片只在这个开关打开时才离开浏览器。
@@ -62,9 +62,9 @@ Key 都只存在本机 `localStorage`。第一次跑本地 OCR 会从 CDN 下载
 仓库里带了两种可部署的 Cloudflare Worker，步骤见 [`serverless/README.md`](serverless/README.md)：
 
 - `serverless/worker.mjs`：转发到你自己的上游 Key，浏览器只拿 `PROXY_TOKEN`。
-- `serverless/worker-ai.mjs`：绑定 Cloudflare Workers AI，自带文本和视觉模型，不需要上游 Key。项目默认的公开演示 Worker 就是这个版本：`https://suikouji-ai.crushlens.workers.dev/v1`。
+- `serverless/worker-ai.mjs`：绑定 Cloudflare Workers AI，自带文本和视觉模型，不需要上游 Key。适合部署到自己的 Cloudflare 账号，再把地址和 `PROXY_TOKEN` 填进「偏好 → 自定义」。
 
-默认设置的演示额度是公开的，只够体验；想稳定用，按 `serverless/README.md` 部署自己的 Worker 并换掉「偏好」里的接口地址 / Key。
+Worker 的额度走部署者自己的 Cloudflare 账号，项目不会内置任何人的公开 Key。按 [`serverless/README.md`](serverless/README.md) 部署后，在「偏好」里填自己的接口地址和口令即可。
 
 ## 语音
 
@@ -96,4 +96,4 @@ drafts/-b.html      另一版方向草稿（仅本地）
 - **小票**：真实可用的本地 OCR（`tesseract.js`），识别文字后在本机解析商家、日期、明细与合计；图片不会上传。配置视觉模型后才会把图片发给你指定的接口做核对。
 - **拍物**：抠图用本地 BiRefNet-lite（`@huggingface/transformers`，浏览器内跑，首次下载模型）；没有配置图片生成时保留抠图，配置了才会生成画风。内置样张会生成一张本地 SVG 贴纸，不再显示 📦。
 - **语音**：默认用浏览器语音；配置转写接口后改用录音上传。
-- **存储**：浏览器配额满时写入会失败；如果图片很多，建议先导出备份，再清理贴册。公开演示 Worker 的额度有限，适合体验，不适合长期大量使用。
+- **存储**：浏览器配额满时写入会失败；如果图片很多，建议先导出备份，再清理贴册。Worker 的额度按部署者自己的账号计算，公开分享前请确认口令没有泄露。
