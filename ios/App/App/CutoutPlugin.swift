@@ -87,7 +87,7 @@ public class CutoutPlugin: CAPPlugin, CAPBridgedPlugin {
 
                 let model = try self.getModel()
                 let inputName = model.modelDescription.inputDescriptionsByName.keys.first ?? "image"
-                let provider = MLDictionaryFeatureProvider(dictionary: [
+                let provider = try MLDictionaryFeatureProvider(dictionary: [
                     inputName: MLFeatureValue(multiArray: inputArray)
                 ])
                 let output = try model.prediction(from: provider)
