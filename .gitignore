@@ -1,11 +1,7 @@
-﻿node_modules
+node_modules
 dist
-src-tauri/target
-src-tauri/gen
 .tmp
 release
 *.log
-
 *.zip
-
-src-tauri/whisper/models/*.bin
+.DS_Store
