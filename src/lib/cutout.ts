@@ -1,6 +1,8 @@
 /**
- * 本地抠图：BiRefNet-lite（MIT）在浏览器里跑，不上传图片。
- * 首次使用会从镜像下载约 110MB 的 ONNX 模型，之后走缓存。
+ * 本地抠图：BiRefNet-lite（MIT）在浏览器里跑，图片不上传。
+ * 首次使用会从镜像下载约 100MB 的 ONNX 模型，之后走浏览器缓存。
+ * 本地打包的 MODNet / RMBG 与此版 Transformers.js 的 background-removal
+ * 管线不兼容，先保留远程 BiRefNet，功能优先。
  */
 let segmenterPromise: Promise<(input: unknown) => Promise<unknown>> | null = null;
 
@@ -8,8 +10,6 @@ async function getSegmenter(onProgress?: (ratio: number) => void) {
   if (!segmenterPromise) {
     segmenterPromise = (async () => {
       const { pipeline, env } = await import("@huggingface/transformers");
-      // 国内直连 huggingface.co 经常失败；镜像不可用时再退回官方源。
-      env.remoteHost = "https://hf-mirror.com";
       let lastError: unknown;
       for (const host of ["https://hf-mirror.com", "https://huggingface.co"]) {
         try {
@@ -35,27 +35,10 @@ async function getSegmenter(onProgress?: (ratio: number) => void) {
   return segmenterPromise;
 }
 
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("抠图结果读不出来"));
-    reader.readAsDataURL(blob);
-  });
-}
-
-async function rawToDataUrl(raw: unknown): Promise<string> {
-  const image = raw as { toCanvas?: () => HTMLCanvasElement | OffscreenCanvas };
-  if (!image?.toCanvas) throw new Error("抠图结果不是图片");
-  const canvas = image.toCanvas();
-  if (typeof (canvas as HTMLCanvasElement).toDataURL === "function") {
-    return (canvas as HTMLCanvasElement).toDataURL("image/png");
-  }
-  const offscreen = canvas as OffscreenCanvas;
-  if (typeof offscreen.convertToBlob === "function") {
-    return blobToDataUrl(await offscreen.convertToBlob({ type: "image/png" }));
-  }
-  throw new Error("这个浏览器不支持导出抠图结果");
+function rawToDataUrl(raw: unknown): string {
+  const value = raw as { toDataURL?: (type?: string) => string };
+  if (typeof value?.toDataURL === "function") return value.toDataURL("image/png");
+  throw new Error("抠图结果格式不支持");
 }
 
 export async function cutoutProduct(
@@ -63,7 +46,28 @@ export async function cutoutProduct(
   onProgress?: (ratio: number) => void
 ): Promise<string> {
   const segmenter = await getSegmenter(onProgress);
-  const result = await segmenter(image);
-  const raw = Array.isArray(result) ? result[0] : result;
-  return rawToDataUrl(raw);
+  const output = await segmenter(image);
+  const list = Array.isArray(output) ? output : [output];
+  const first = list[0] as { toBlob?: () => Promise<Blob>; blob?: Blob } | undefined;
+  if (first) {
+    if (typeof first.toBlob === "function") {
+      const blob = await first.toBlob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    }
+    const blob = first.blob;
+    if (blob instanceof Blob) {
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(blob);
+      });
+    }
+  }
+  return rawToDataUrl(output);
 }
