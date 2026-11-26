@@ -8,6 +8,7 @@ import {
   recordingSupported,
   startRecording,
   transcribeAudio,
+  transcribeLocal,
   type Recorder,
 } from "../lib/asr";
 import { currentMonth, dayLabel, formatFen, monthLabel, today, yuanToFen } from "../lib/format";
@@ -88,64 +89,102 @@ export default function Home() {
     }
   };
 
+  // Two-tap recorder: first tap starts, second stops and transcribes.
+  // `transcriber` decides where the audio goes (configured endpoint or local Whisper).
+  const recordAndTranscribe = async (
+    transcriber: (blob: Blob) => Promise<string>
+  ) => {
+    if (!recordingSupported()) {
+      toast("这个浏览器不能录音，先用文字记吧");
+      return;
+    }
+    if (recorderRef.current) {
+      const recorder = recorderRef.current;
+      recorderRef.current = null;
+      setListening(false);
+      setBusy(true);
+      setLive("正在转成文字…");
+      try {
+        const blob = await recorder.stop();
+        const transcript = await transcriber(blob);
+        setText(transcript);
+        setLive("");
+        await startParse(transcript, "voice");
+      } catch (err) {
+        toast(err instanceof Error ? err.message : "转写失败");
+      } finally {
+        setBusy(false);
+        setLive("");
+      }
+      return;
+    }
+    try {
+      // getUserMedia must be called from the click gesture itself.
+      const recorder = await startRecording();
+      recorderRef.current = recorder;
+      setListening(true);
+      setLive("正在录音，说完再点一下");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (/permission|denied|notallowed/i.test(message)) {
+        toast("麦克风权限被拒绝，去浏览器设置里允许后再试");
+      } else if (!window.isSecureContext) {
+        toast("语音需要 HTTPS 环境，换用浏览器自带语音或直接打字");
+      } else {
+        toast(message || "无法开始录音");
+      }
+    }
+  };
+
   const speak = async () => {
     if (busy) return;
 
-    // Configured Whisper-style endpoint: record on the first tap, stop and
-    // transcribe on the second. Works in browsers without SpeechRecognition.
+    // 1) Configured Whisper-style endpoint (needs a key).
     if (hasAsr()) {
-      if (!recordingSupported()) {
-        toast("这个浏览器不能录音，先用文字记吧");
-        return;
-      }
-      if (recorderRef.current) {
-        const recorder = recorderRef.current;
-        recorderRef.current = null;
-        setListening(false);
-        setBusy(true);
-        setLive("正在转成文字…");
-        try {
-          const blob = await recorder.stop();
-          const transcript = await transcribeAudio(blob);
-          setText(transcript);
-          setLive("");
-          await startParse(transcript, "voice");
-        } catch (err) {
-          toast(err instanceof Error ? err.message : "转写失败");
-        } finally {
-          setBusy(false);
-          setLive("");
-        }
-        return;
-      }
-      try {
-        const recorder = await startRecording();
-        recorderRef.current = recorder;
-        setListening(true);
-        setLive("正在录音，说完再点一下");
-      } catch (err) {
-        toast(err instanceof Error ? err.message : "无法开始录音");
-      }
+      await recordAndTranscribe((blob) => transcribeAudio(blob));
       return;
     }
 
-    if (!speechSupported()) {
-      toast("这个浏览器不支持语音，先用文字记吧");
+    // 2) Web Speech API: instant and download-free where it works.
+    if (speechSupported()) {
+      setListening(true);
+      setLive("");
+      try {
+        const transcript = await listenOnce((partial) => setLive(partial));
+        setText(transcript);
+        setLive("");
+        await startParse(transcript, "voice");
+        return;
+      } catch (err) {
+        // Many mobile browsers expose SpeechRecognition but fail at runtime
+        // (network / service-not-allowed). Fall through to local recording.
+        if (!recordingSupported()) {
+          toast(err instanceof Error ? err.message : "语音识别失败");
+          return;
+        }
+        toast("浏览器语音不可用，改用本机录音识别");
+      } finally {
+        setListening(false);
+        setLive("");
+      }
+    }
+
+    // 3) Recorder + fully local Whisper: works on mobile browsers that have
+    // no working SpeechRecognition and no API key. Audio never leaves the device.
+    if (recordingSupported()) {
+      await recordAndTranscribe((blob) =>
+        transcribeLocal(
+          blob,
+          (ratio) => {
+            if (ratio < 1) setLive(`正在下载语音模型… ${Math.round(ratio * 100)}%`);
+          },
+          (phase) => setLive(phase)
+        )
+      );
       return;
     }
-    setListening(true);
-    setLive("");
-    try {
-      const transcript = await listenOnce((partial) => setLive(partial));
-      setText(transcript);
-      setLive("");
-      await startParse(transcript, "voice");
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "语音识别失败");
-    } finally {
-      setListening(false);
-      setLive("");
-    }
+
+    toast("这个浏览器不能录音也不支持语音，先用文字记吧");
   };
 
   const saveRows = () => {
@@ -218,7 +257,9 @@ export default function Home() {
               ? "点一下开始录音，再点一下结束"
               : speechSupported()
                 ? "点右下角，说一句"
-                : "当前浏览器不支持语音，直接打字"}
+                : recordingSupported()
+                  ? "点一下开始录音，再点一下结束"
+                  : "当前浏览器不支持语音，直接打字"}
           </span>
         )}
         <button
@@ -252,9 +293,10 @@ export default function Home() {
           value={text}
           placeholder="也可以打字：午饭 35，打车 18"
           aria-label="输入账单"
+          enterKeyHint="done"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               if (!busy) startParse(text, "text");
             }

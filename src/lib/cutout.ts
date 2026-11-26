@@ -1,33 +1,64 @@
 /**
  * 本地抠图：BiRefNet-lite（MIT）在浏览器里跑，图片不上传。
- * 首次使用会从镜像下载约 100MB 的 ONNX 模型，之后走浏览器缓存。
- * 本地打包的 MODNet / RMBG 与此版 Transformers.js 的 background-removal
- * 管线不兼容，先保留远程 BiRefNet，功能优先。
+ * 首次使用会下载 ONNX 模型（约 94MB，之后走浏览器缓存）。
+ *
+ * 进度来自 transformers.js v4 的 `progress_total`（所有文件的聚合进度）；
+ * 只听 per-file 的 `progress` 会一直显示 0%。下载卡住时有超时兜底，
+ * 并依次尝试镜像与官方源，不会再无限停在 0%。
  */
-let segmenterPromise: Promise<(input: unknown) => Promise<unknown>> | null = null;
+import { createDeadline, makeModelProgress } from "./modelProgress";
 
-async function getSegmenter(onProgress?: (ratio: number) => void) {
+type Segmenter = (input: unknown) => Promise<unknown>;
+
+type EnvLike = { remoteHost?: string };
+
+let segmenterPromise: Promise<Segmenter> | null = null;
+
+async function loadSegmenter(
+  onProgress?: (ratio: number) => void,
+  onPhase?: (phase: string) => void
+): Promise<Segmenter> {
+  const mod = await import("@huggingface/transformers");
+  const env = mod.env as EnvLike;
+
+  let lastError: unknown;
+  // Keep the original dtype (fp16). Letting the library pick its default
+  // device (wasm) is the known-working path; forcing webgpu would break
+  // browsers without WebGPU because v4 has no automatic fallback.
+  for (const host of ["https://hf-mirror.com", "https://huggingface.co"]) {
+    const deadline = createDeadline(180_000, "抠图模型下载超时，检查网络后再试一次");
+    const progress = makeModelProgress({ onProgress, onPhase });
+    try {
+      env.remoteHost = host;
+      const pipelinePromise = mod.pipeline("background-removal", "studioludens/birefnet-lite-512", {
+        dtype: "fp16",
+        progress_callback: (info) => {
+          progress(info);
+          deadline.kick();
+        },
+      });
+      // Avoid an unhandled rejection when the deadline wins the race.
+      pipelinePromise.catch(() => undefined);
+      const loaded = (await Promise.race([pipelinePromise, deadline.promise])) as Segmenter;
+      deadline.cancel();
+      onProgress?.(1);
+      return loaded;
+    } catch (err) {
+      deadline.cancel();
+      lastError = err;
+      // Try the next mirror. A timed-out download may still finish in the
+      // background, which is harmless: the cached files just help next time.
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("抠图模型没加载下来");
+}
+
+function getSegmenter(
+  onProgress?: (ratio: number) => void,
+  onPhase?: (phase: string) => void
+): Promise<Segmenter> {
   if (!segmenterPromise) {
-    segmenterPromise = (async () => {
-      const { pipeline, env } = await import("@huggingface/transformers");
-      let lastError: unknown;
-      for (const host of ["https://hf-mirror.com", "https://huggingface.co"]) {
-        try {
-          env.remoteHost = host;
-          return (await pipeline("background-removal", "studioludens/birefnet-lite-512", {
-            dtype: "fp16",
-            progress_callback: (p: { status?: string; progress?: number }) => {
-              if (p?.status === "progress" && typeof p.progress === "number") {
-                onProgress?.(Math.max(0, Math.min(1, p.progress / 100)));
-              }
-            },
-          })) as unknown as (input: unknown) => Promise<unknown>;
-        } catch (err) {
-          lastError = err;
-        }
-      }
-      throw lastError instanceof Error ? lastError : new Error("抠图模型没加载下来");
-    })().catch((err) => {
+    segmenterPromise = loadSegmenter(onProgress, onPhase).catch((err) => {
       segmenterPromise = null;
       throw err;
     });
@@ -35,39 +66,38 @@ async function getSegmenter(onProgress?: (ratio: number) => void) {
   return segmenterPromise;
 }
 
-function rawToDataUrl(raw: unknown): string {
-  const value = raw as { toDataURL?: (type?: string) => string };
-  if (typeof value?.toDataURL === "function") return value.toDataURL("image/png");
-  throw new Error("抠图结果格式不支持");
+function readBlobAsDataUrl(blob: Blob): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 }
 
 export async function cutoutProduct(
   image: string,
-  onProgress?: (ratio: number) => void
+  onProgress?: (ratio: number) => void,
+  onPhase?: (phase: string) => void
 ): Promise<string> {
-  const segmenter = await getSegmenter(onProgress);
+  const segmenter = await getSegmenter(onProgress, onPhase);
+  onPhase?.("正在把背景去掉…");
+  onProgress?.(1);
   const output = await segmenter(image);
   const list = Array.isArray(output) ? output : [output];
-  const first = list[0] as { toBlob?: () => Promise<Blob>; blob?: Blob } | undefined;
+  const first = list[0] as
+    | { toBlob?: () => Promise<Blob>; blob?: Blob; toDataURL?: (type?: string) => string }
+    | undefined;
   if (first) {
     if (typeof first.toBlob === "function") {
-      const blob = await first.toBlob();
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(blob);
-      });
+      return readBlobAsDataUrl(await first.toBlob());
     }
-    const blob = first.blob;
-    if (blob instanceof Blob) {
-      return await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result));
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(blob);
-      });
+    if (first.blob instanceof Blob) {
+      return readBlobAsDataUrl(first.blob);
+    }
+    if (typeof first.toDataURL === "function") {
+      return first.toDataURL("image/png");
     }
   }
-  return rawToDataUrl(output);
+  throw new Error("抠图结果格式不支持");
 }

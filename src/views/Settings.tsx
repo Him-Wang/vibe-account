@@ -69,7 +69,7 @@ export default function Settings() {
       asrModel: asrModel.trim(),
       asrApiKey: asrApiKey.trim(),
     });
-    toast(active ? "录音转写已接上" : "已切回浏览器语音");
+    toast(active ? "录音转写已接上" : "已切回本机语音");
   };
 
   const pickImagePreset = (id: string) => {
@@ -138,7 +138,7 @@ export default function Settings() {
           <span className={hasAsr() ? "on" : ""}>
             <i />
             语音转写
-            <b>{hasAsr() ? "已接" : "浏览器语音"}</b>
+            <b>{hasAsr() ? "已接" : "本机语音"}</b>
           </span>
           <span className={hasImageGen() ? "on" : ""}>
             <i />
@@ -249,7 +249,8 @@ export default function Settings() {
       <section className="card form">
         <h3 className="card-title">语音输入（可选）</h3>
         <p className="muted small">
-          先选预设并填 Key 才启用；不启用就用浏览器自带语音（Chrome / Edge 最稳）。
+          不填 Key 也能用：默认在手机浏览器里录音并用本地 Whisper 识别，不上传、不花钱（首次下载模型约 60MB）。
+          填了 Key 则优先走云端转写；桌面 Chrome / Edge 也可用浏览器自带语音。
         </p>
         <Field label="预设">
           <select

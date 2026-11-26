@@ -56,32 +56,32 @@ export default function Processing() {
           setProgress(100);
           setPhase("识别完成");
         } else {
-          let cutout = "";
-          if (imagePath) {
-            try {
-              cutout = await cutoutProduct(imagePath, (ratio) => {
-                if (cancelled) return;
-                setProgress(5 + Math.round(ratio * 85));
-                setPhase(ratio < 0.99 ? "正在把背景去掉…" : "正在收尾…");
-              });
-            } catch {
+          if (!imagePath) throw new Error("没有待处理的商品图片");
+          const cutout = await cutoutProduct(
+            imagePath,
+            (ratio) => {
               if (cancelled) return;
-              setNote("抠图模型没加载下来，先保留原图，账还是可以继续记。");
+              setProgress(5 + Math.round(ratio * 85));
+            },
+            (text) => {
+              if (!cancelled) setPhase(text);
             }
-          }
+          );
           if (cancelled) return;
+          setProgress(94);
+          setPhase("正在生成画风…");
           const anime = await mockAnime("cute");
           if (cancelled) return;
           setFlow({
             segment: {
-              cutoutFileId: cutout || imagePath || "",
+              cutoutFileId: cutout || imagePath,
               whiteBorder: false,
               provider: cutout ? "birefnet-lite" : "original",
             },
             anime,
           });
           setProgress(100);
-          setPhase(cutout ? "贴纸准备好了" : "先按原图准备");
+          setPhase("贴纸准备好了");
         }
         setDone(true);
         window.setTimeout(() => {
@@ -93,7 +93,9 @@ export default function Processing() {
         const message = err instanceof Error ? err.message : "处理失败";
         setError(
           /failed to fetch|network|load failed/i.test(message)
-            ? "本地 OCR 模型没下载下来，检查网络后再试一次。小票图片没有上传。"
+            ? mode === "receipt"
+              ? "本地 OCR 模型没下载下来，检查网络后再试一次。小票图片没有上传。"
+              : "抠图模型没下载下来，检查网络后再试一次。图片没有上传。"
             : message
         );
       }
@@ -140,7 +142,7 @@ export default function Processing() {
             ? hasVision()
               ? "本地 OCR + 视觉模型核对"
               : "本地 OCR，图片不出这台设备"
-            : "演示：抠图与画风仍是占位，不会上传图片"}
+            : "本地 BiRefNet 抠图，图片不出这台设备"}
         </p>
       )}
     </div>
