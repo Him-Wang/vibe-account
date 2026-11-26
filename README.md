@@ -95,9 +95,14 @@ drafts/-b.html      另一版方向草稿（仅本地）
 
 ## 打包成手机 App（Android / iOS）
 
-项目已用 [Capacitor 8](https://capacitorjs.com/) 套壳成原生 App：`android/` 和 `ios/` 两个目录就是原生工程，网页内容放在各自的 `assets/public` / `App/public` 里。`capacitor.config.ts` 里 `appId` 是 `com.himwang.suikouji`，`appName` 是「随口记」。
+项目已用 [Capacitor 8](https://capacitorjs.com/) 打包成原生 App：`android/` 和 `ios/` 两个目录就是原生工程，网页内容放在各自的 `assets/public` / `App/public` 里。`capacitor.config.ts` 里 `appId` 是 `com.himwang.suikouji`，`appName` 是「随口记」。
 
-> 仓库里已经把两个原生工程和所需权限都提交好了。但**真正编译出安装包需要对应的工具链**：Android 需要 Windows/macOS/Linux + Java 17 + Android Studio；iOS 必须在 **macOS + Xcode** 上编译（Windows 上无法产出 IPA）。下面按平台分别说明。
+**抠图模型已内置在安装包里，不需要联网下载**（0.3.0 起）：
+- **Android**：原生 Java 插件 `CutoutPlugin` + ONNX Runtime，`assets/models/u2netp.onnx`（4.6MB，Apache-2.0），arm64-v8a。APK 约 32MB。
+- **iOS**：原生 Swift 插件 `CutoutPlugin` + Core ML，MIT 协议的 BiRefNet Lite fp16（约 78MB），由 CI 在构建时下载并编译成 `.mlmodelc` 打进包里。IPA 约 86MB，**要求 iOS 17+**。
+- App 里走原生引擎；网页版行为不变，仍走浏览器内 WASM/transformers.js。
+
+现成安装包在 [Releases](https://github.com/Him-Wang/vibe-account/releases) 下载（v0.3.0）。想自己编译才需要对应工具链：Android 需要 Windows/macOS/Linux + Java 21 + Android SDK；iOS 必须在 **macOS + Xcode** 上编译（Windows 上无法产出 IPA）。也可直接触发 Actions 的 **Build Mobile Apps** 工作流，云端会自动构建并产出 APK / 未签名 IPA。下面按平台说明。
 
 ### 通用：先把网页同步进原生工程
 
@@ -112,7 +117,7 @@ npm run cap:sync        # = npm run build && cap sync
 
 ### Android：产出 APK
 
-1. 安装 [Android Studio](https://developer.android.com/studio)（自带 JDK 17 和 Android SDK）。
+1. 安装 [Android Studio](https://developer.android.com/studio)（自带 JDK 21 和 Android SDK）。
 2. 设置环境变量 `ANDROID_HOME`（或 `ANDROID_SDK_ROOT`）指向 SDK 目录，例如 Windows 上 `C:\Users\<你>\AppData\Local\Android\Sdk`。
 3. 打开工程：`npx cap open android`（会用 Android Studio 打开 `android/`）。
 4. 等 Gradle 同步完成，菜单 **Build → Build Bundle(s) / APK(s) → Build APK(s)**。
@@ -187,7 +192,7 @@ iOS 无法在 Windows 上打包，以下步骤在一台 **Mac** 上完成。
 #### iOS 上的注意点
 
 - 语音和本地 Whisper 需要麦克风权限，首次使用会弹系统授权；拒绝后到 **设置 → 隐私与安全性 → 麦克风** 里重新允许。
-- 首次抠图/语音会从 Hugging Face 下载模型（94–183MB / 60MB），需要联网；之后缓存在 App 内。
+- 抠图模型已内置，离线可用。首次**语音**仍会下载本地 Whisper 模型（约 60MB）并缓存在 App 内，需要联网一次。
 - `capacitor.config.ts` 用 `iosScheme: "capacitor"`，`WASM`/`fetch` 在 App 内可用；不要改成 `file://`，否则模型下载会失败。
 
 ## 说明
