@@ -10,3 +10,4 @@ release
 .dev.vars
 .npm-cache
 serverless/.dev.vars
+artifacts

@@ -7,6 +7,7 @@
  * 并依次尝试镜像与官方源，不会再无限停在 0%。
  */
 import { createDeadline, makeModelProgress } from "./modelProgress";
+import { nativeCutout } from "./nativeCutout";
 
 type Segmenter = (input: unknown) => Promise<unknown>;
 
@@ -80,6 +81,13 @@ export async function cutoutProduct(
   onProgress?: (ratio: number) => void,
   onPhase?: (phase: string) => void
 ): Promise<string> {
+  // In the packaged apps, use the native engine with a bundled model: no
+  // download, faster, and lower memory. Web keeps the WASM pipeline below.
+  const native = await nativeCutout(image, onPhase);
+  if (native) {
+    onProgress?.(1);
+    return native;
+  }
   const segmenter = await getSegmenter(onProgress, onPhase);
   onPhase?.("正在把背景去掉…");
   onProgress?.(1);

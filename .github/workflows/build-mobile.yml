@@ -53,6 +53,22 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx cap sync ios
+      - name: Download bundled Core ML cutout model
+        run: |
+          curl -L --fail --retry 3 \
+            -o "$RUNNER_TEMP/birefnet-coreml.zip" \
+            "https://huggingface.co/metaclass/birefnet-lite-coreml/resolve/main/fp16compute-fp32io/r1/BiRefNetLite-1024-FP16Compute-FP32IO-iOS17-r1.mlpackage.zip"
+          echo "46e7f3306069d1385761c0db86d65913dc3f980bf5348eb0c3db429e3f8414b7  $RUNNER_TEMP/birefnet-coreml.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/birefnet-coreml.zip" -d "$RUNNER_TEMP/"
+          # Compile the model to .mlmodelc deterministically with coremlcompiler.
+          xcrun coremlcompiler compile \
+            "$RUNNER_TEMP/BiRefNetLite-1024-FP16Compute-FP32IO.mlpackage" \
+            ios/App/App/BiRefNetLite-1024-FP16Compute-FP32IO.mlmodelc
+          du -sh ios/App/App/BiRefNetLite-1024-FP16Compute-FP32IO.mlmodelc
+      - name: Register native plugin in Capacitor config
+        run: |
+          node -e "const fs=require('fs');const p='ios/App/App/capacitor.config.json';const j=JSON.parse(fs.readFileSync(p));j.packageClassList=[...new Set([...(j.packageClassList||[]),'CutoutPlugin'])];fs.writeFileSync(p,JSON.stringify(j,null,'\t'))"
+          cat ios/App/App/capacitor.config.json
       - name: Build iOS app (unsigned, for device)
         working-directory: ios/App
         run: |
