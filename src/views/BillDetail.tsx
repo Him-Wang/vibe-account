@@ -14,7 +14,7 @@ export default function BillDetail() {
   useEffect(() => {
     const next = id ? billService.get(id) : undefined;
     if (!next) {
-      toast("这条账单不在了");
+      toast("这一笔不见了");
       navigate("/bills");
       return;
     }
@@ -25,7 +25,7 @@ export default function BillDetail() {
 
   const remove = async () => {
     const ok = await confirmDialog({
-      title: "删除这条账单？",
+      title: "删掉这一笔？",
       content: "删除后不可恢复。",
       danger: true,
       confirmText: "删除",
@@ -39,7 +39,7 @@ export default function BillDetail() {
   return (
     <div className="page">
       <NavBar
-        title="账单详情"
+        title="这笔账"
         right={
           <button className="icon-link" onClick={() => navigate(`/bills/edit/${bill._id}`)}>
             编辑
@@ -59,12 +59,12 @@ export default function BillDetail() {
         <p className="detail-note">{bill.note || bill.merchant || "一笔支出"}</p>
         <span className="pill">
           {bill.source === "voice"
-            ? "语音记账"
+            ? "说一句"
             : bill.source === "receipt"
-              ? "拍小票"
+              ? "扫票"
               : bill.source === "product"
-                ? "拍商品"
-                : "手动记账"}
+                ? "拍物"
+                : "手记"}
         </span>
       </section>
 
@@ -91,7 +91,7 @@ export default function BillDetail() {
 
       {bill.items.length > 0 && (
         <section className="card">
-          <h3 className="card-title">消费明细</h3>
+          <h3 className="card-title">这一单买了什么</h3>
           <div className="items">
             {bill.items.map((item, i) => (
               <div className="item-row" key={`${item.name}-${i}`}>
@@ -105,7 +105,7 @@ export default function BillDetail() {
       )}
 
       <button className="btn danger block" onClick={remove}>
-        删除这条账单
+        删掉这一笔
       </button>
     </div>
   );

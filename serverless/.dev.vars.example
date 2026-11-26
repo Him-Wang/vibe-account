@@ -1,0 +1,4 @@
+# 本地开发时复制成 .dev.vars（不要提交）
+PROXY_TOKEN = "换成只有你知道的口令"
+UPSTREAM_KEY = "sk-你的上游密钥"
+UPSTREAM_BASE = "https://api.openai.com/v1"

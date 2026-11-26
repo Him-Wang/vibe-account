@@ -2,12 +2,12 @@ import type { JournalBook, JournalPage } from "../types";
 import { collection } from "./db";
 
 export const COVER_COLORS = [
-  "#E86A4A",
-  "#F0A24A",
-  "#5BB98C",
-  "#6B9BE0",
-  "#B08BD8",
-  "#5BC0C4",
+  "#DCC9F4",
+  "#C6E7D4",
+  "#C9DCF7",
+  "#FFE3A6",
+  "#E8DDF6",
+  "#D8E6DA",
 ];
 
 const books = collection<JournalBook>("journalBooks");
@@ -22,7 +22,7 @@ export const journalService = {
   listBooks(): JournalBook[] {
     let rows = books.all().filter((b) => !b.deleted);
     if (rows.length === 0) {
-      this.createBook("我的第一本手账");
+      this.createBook("我的第一本贴册");
       rows = books.all().filter((b) => !b.deleted);
     }
     return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -36,7 +36,7 @@ export const journalService = {
   createBook(title: string): JournalBook {
     const coverColor = COVER_COLORS[Math.floor(Math.random() * COVER_COLORS.length)];
     return books.insert({
-      title: title.trim() || "未命名手账",
+      title: title.trim() || "未命名贴册",
       coverColor,
       pageCount: 0,
       deleted: false,

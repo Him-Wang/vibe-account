@@ -10,12 +10,12 @@ export default function Journal() {
 
   const create = async () => {
     const title = await promptDialog({
-      title: "给这本手账起个名字",
+      title: "给这本贴册起个名字",
       placeholder: "例如：十一月的小日子",
     });
     if (!title) return;
     const book = journalService.createBook(title);
-    toast("手账本建好了");
+    toast("贴本建好了");
     setVersion((v) => v + 1);
     navigate(`/journal/${book._id}`);
   };
@@ -23,8 +23,8 @@ export default function Journal() {
   return (
     <div className="page" data-version={version}>
       <NavBar
-        title="手账"
-        sub="把账单贴纸贴进纸里"
+        title="贴册"
+        sub="把小票、贴纸和碎碎念贴进纸里"
         showBack={false}
         right={
           <button className="icon-link" onClick={create}>
@@ -48,11 +48,11 @@ export default function Journal() {
         ))}
         <button className="book new" onClick={create}>
           <span>＋</span>
-          <small>新建手账本</small>
+          <small>新建贴本</small>
         </button>
       </div>
 
-      <p className="muted small center">手账页保存在本机浏览器，随时可以导出成图片。</p>
+      <p className="muted small center">贴页都存在本机，随时能导出成图片。</p>
     </div>
   );
 }

@@ -3,7 +3,8 @@ import { billService } from "../lib/bills";
 import { currentMonth, dayLabel, formatFen, monthLabel, shiftMonth } from "../lib/format";
 import { navigate } from "../lib/router";
 import { Empty, NavBar } from "../components/ui";
-import { PlusIcon } from "../components/icons";
+import { AiStrip } from "../components/AiStrip";
+import { PlusIcon, ReceiptIcon } from "../components/icons";
 
 const MAX_SEGMENTS = 5;
 
@@ -40,12 +41,12 @@ export default function Bills() {
   return (
     <div className="page">
       <NavBar
-        title="账本"
+        title="流水"
         sub="每一笔都算数"
         showBack={false}
         right={
           <button className="icon-link" onClick={() => navigate("/bills/edit")}>
-            ＋记一笔
+            ＋ 新记
           </button>
         }
       />
@@ -84,6 +85,8 @@ export default function Bills() {
         </span>
       </section>
 
+      {summary.count > 0 && <AiStrip />}
+
       {split.length > 0 && (
         <section className="split">
           <div className="split-bar" aria-hidden="true">
@@ -110,8 +113,8 @@ export default function Bills() {
 
       {groups.length === 0 ? (
         <Empty
-          icon="🧾"
-          text="这个月还没有记录"
+          icon={<ReceiptIcon size={24} />}
+          text="这个月还空着"
           action={
             <button className="btn primary" onClick={() => navigate("/bills/edit")}>
               记第一笔
@@ -155,8 +158,9 @@ export default function Bills() {
         </div>
       )}
 
-      <button className="fab" onClick={() => navigate("/bills/edit")} aria-label="记一笔">
-        <PlusIcon size={22} />
+      <button className="fab" onClick={() => navigate("/bills/edit")} aria-label="新记一笔">
+        <PlusIcon size={18} />
+        记一笔
       </button>
     </div>
   );

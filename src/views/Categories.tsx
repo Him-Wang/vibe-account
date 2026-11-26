@@ -13,7 +13,7 @@ export default function Categories() {
 
   const add = async () => {
     const name = await promptDialog({
-      title: "新分类名称",
+      title: "新标签名称",
       placeholder: kind === "product" ? "例如：宠物" : "例如：出差",
     });
     if (!name) return;
@@ -44,14 +44,14 @@ export default function Categories() {
 
   return (
     <div className="page" data-version={version}>
-      <NavBar title="分类管理" sub="商品分类用于记账，日期标签用于手账" />
+      <NavBar title="标签册" sub="记账用的标签，也管贴页上的日期" />
 
       <Segmented
         value={kind}
         onChange={(v) => setKind(v)}
         options={[
-          { value: "product", label: "商品分类" },
-          { value: "date", label: "日期标签" },
+          { value: "product", label: "记账标签" },
+          { value: "date", label: "日期" },
         ]}
       />
 

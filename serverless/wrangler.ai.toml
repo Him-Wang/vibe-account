@@ -1,0 +1,9 @@
+name = "suikouji-ai"
+main = "worker-ai.mjs"
+compatibility_date = "2026-11-01"
+
+[ai]
+binding = "AI"
+
+[vars]
+ALLOW_ORIGIN = "*"

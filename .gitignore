@@ -5,3 +5,8 @@ release
 *.log
 *.zip
 .DS_Store
+
+.wrangler-config
+.dev.vars
+.npm-cache
+serverless/.dev.vars

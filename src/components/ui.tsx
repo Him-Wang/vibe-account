@@ -14,12 +14,10 @@ export function NavBar({
 }) {
   return (
     <header className="navbar">
-      {showBack ? (
+      {showBack && (
         <button className="icon-btn" onClick={() => back()} aria-label="返回">
           ‹
         </button>
-      ) : (
-        <span className="icon-btn ghost" />
       )}
       <div className="navbar-title">
         <strong>{title}</strong>

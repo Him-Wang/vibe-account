@@ -213,7 +213,16 @@ export function PlusIcon(props: IconProps) {
   );
 }
 
+export function SparkIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3.5l1.7 5.1a2 2 0 0 0 1.2 1.2l5.1 1.7-5.1 1.7a2 2 0 0 0-1.2 1.2L12 19.5l-1.7-5.1a2 2 0 0 0-1.2-1.2L4 11.5l5.1-1.7a2 2 0 0 0 1.2-1.2z" />
+    </Svg>
+  );
+}
+
 export function ChevronIcon(props: IconProps) {
+
   return (
     <Svg {...props}>
       <path d="M9.5 5.5 16 12l-6.5 6.5" />

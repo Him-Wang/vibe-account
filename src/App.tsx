@@ -19,10 +19,12 @@ import Mine from "./views/Mine";
 import Stickers from "./views/Stickers";
 import Settings from "./views/Settings";
 import Privacy from "./views/Privacy";
+import Insights from "./views/Insights";
 
 function Routes({ path }: { path: string }) {
   if (path === "/") return <Home />;
   if (path === "/bills") return <Bills />;
+  if (path === "/insights") return <Insights />;
   if (path === "/bills/edit") return <BillEdit />;
   if (match("/bills/edit/:id", path)) return <BillEdit />;
   if (match("/bills/:id", path)) return <BillDetail />;
@@ -59,6 +61,7 @@ export default function App() {
     const known = [
       "/",
       "/bills",
+      "/insights",
       "/bills/edit",
       "/capture",
       "/processing",
@@ -78,12 +81,7 @@ export default function App() {
   }, [route.path]);
 
   return (
-    <div className="app">
-      <div className="aurora" aria-hidden="true">
-        <span className="blob b1" />
-        <span className="blob b2" />
-        <span className="blob b3" />
-      </div>
+    <div className="app" data-tab={isTabRoute(route.path) ? "true" : undefined}>
       <main className="content">
         <Routes path={route.path} />
       </main>

@@ -6,6 +6,9 @@ import { getFlow, resetFlow } from "../lib/flow";
 import { fenToYuan, formatFen, today, yuanToFen } from "../lib/format";
 import { replace } from "../lib/router";
 import { toast } from "../lib/ui";
+import { builtinStickerDataUrl } from "../lib/stickerArt";
+import { hasImageGen } from "../lib/settings";
+import { stylizeProduct } from "../lib/imagegen";
 import { NavBar, Sheet, Stepper } from "../components/ui";
 import type { Category } from "../types";
 
@@ -29,11 +32,46 @@ export default function ProductConfirm() {
   );
   const [qty, setQty] = useState(1);
   const [style, setStyle] = useState("cute");
+  const [styleImage, setStyleImage] = useState("");
+  const [styling, setStyling] = useState(false);
   const [category, setCategory] = useState<Category | undefined>(initialCat);
   const [pickerOpen, setPickerOpen] = useState(false);
 
+  if (!builtin && flow.imagePaths.length === 0) {
+    return (
+      <div className="page">
+        <NavBar title="收下这件" />
+        <p className="muted">没有待确认的商品，回去重新拍一件吧。</p>
+      </div>
+    );
+  }
+
   const unit = yuanToFen(Number(priceText));
   const total = unit * qty;
+  // Builtin samples have no photo: generate a small sticker sheet locally so
+  // the sticker record always has a readable image.
+  const builtinImage = builtin ? builtinStickerDataUrl(builtin) : "";
+  const image = flow.imagePaths[0] || builtinImage;
+  const cutout = flow.segment?.cutoutFileId || image;
+
+  const generateStyle = async (next: string) => {
+    setStyle(next);
+    setStyleImage("");
+    if (!hasImageGen()) {
+      toast("先到偏好里接上图片生成，画风才会真的生成");
+      return;
+    }
+    setStyling(true);
+    try {
+      const out = await stylizeProduct(cutout || image, next);
+      setStyleImage(out);
+      toast("画风生成好了，看看右边");
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "画风没生成出来");
+    } finally {
+      setStyling(false);
+    }
+  };
 
   const save = () => {
     if (!category) {
@@ -44,7 +82,6 @@ export default function ProductConfirm() {
       toast("单价要大于 0");
       return;
     }
-    const image = flow.imagePaths[0] || "";
     const bill = billService.create({
       amount: total,
       date: today(),
@@ -60,25 +97,25 @@ export default function ProductConfirm() {
     stickerService.add({
       name,
       originalFileId: image,
-      cutoutFileId: image,
-      animeFileId: image,
-      thumbFileId: image,
+      cutoutFileId: cutout,
+      animeFileId: styleImage || cutout,
+      thumbFileId: styleImage || image,
       categoryName: category.name,
       billId: bill._id,
     });
     resetFlow();
-    toast("已记账，贴纸也收好了");
+    toast("记好了，图鉴里多一张");
     window.setTimeout(() => replace("/bills"), 320);
   };
 
   return (
     <div className="page">
-      <NavBar title="确认商品" sub="选个风格，存成贴纸" />
+      <NavBar title="收下这件" sub="看一眼，收进图鉴" />
 
       <section className="product-preview">
         <div className="product-shot">
-          {builtin ? (
-            <span className="product-emoji">{builtin.emoji}</span>
+          {builtinImage ? (
+            <img src={builtinImage} alt={builtin?.name || "商品样张"} />
           ) : flow.imagePaths[0] ? (
             <img src={flow.imagePaths[0]} alt="商品原图" />
           ) : (
@@ -87,14 +124,22 @@ export default function ProductConfirm() {
           <span className="preview-badge">原图</span>
         </div>
         <div className="product-shot cutout">
-          {builtin ? (
-            <span className="product-emoji">{builtin.emoji}</span>
-          ) : flow.imagePaths[0] ? (
-            <img src={flow.imagePaths[0]} alt="抠图预览" className="cutout-img" />
+          {builtinImage ? (
+            <img src={builtinImage} alt={`${builtin?.name || "商品"}贴纸`} className="cutout-img" />
+          ) : styleImage ? (
+            <img src={styleImage} alt="画风生成预览" className="cutout-img" />
+          ) : cutout ? (
+            <img src={cutout} alt="本地抠图预览" className="cutout-img" />
           ) : (
             <span className="product-emoji">✨</span>
           )}
-          <span className="preview-badge">抠图 · Mock</span>
+          <span className="preview-badge">
+            {builtinImage
+              ? "样张贴纸"
+              : styleImage
+                ? `画风 · ${ANIME_STYLES.find((s) => s.id === style)?.label || style}`
+                : "本地抠图"}
+          </span>
         </div>
       </section>
 
@@ -103,13 +148,21 @@ export default function ProductConfirm() {
           <button
             key={s.id}
             className={style === s.id ? "style-chip active" : "style-chip"}
-            onClick={() => setStyle(s.id)}
+            onClick={() => generateStyle(s.id)}
+            disabled={styling}
           >
             <span>{s.emoji}</span>
             {s.label}
           </button>
         ))}
       </section>
+      <p className="muted tiny style-note">
+        {styling
+          ? "正在按这个画风生成，可能要十几秒…"
+          : hasImageGen()
+            ? "点画风会调用你配置的图片接口，生成后再保存。"
+            : "没配图片生成时先存抠图；接上图片接口后，画风才会真的生成。"}
+      </p>
 
       <section className="card form">
         <label className="field">
@@ -126,7 +179,7 @@ export default function ProductConfirm() {
         </button>
 
         <label className="field">
-          <span className="field-label">单价（元）</span>
+          <span className="field-label">单价</span>
           <input
             className="input"
             value={priceText}
@@ -136,7 +189,7 @@ export default function ProductConfirm() {
         </label>
 
         <div className="field field-inline">
-          <span className="field-label">数量</span>
+          <span className="field-label">几件</span>
           <Stepper value={qty} onChange={setQty} />
         </div>
       </section>
@@ -146,7 +199,7 @@ export default function ProductConfirm() {
           合计 <strong>¥{formatFen(total)}</strong>
         </span>
         <button className="btn primary" onClick={save}>
-          记账并生成贴纸
+          记下并收进图鉴
         </button>
       </div>
 

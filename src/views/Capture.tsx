@@ -3,6 +3,8 @@ import { BUILTIN_PRODUCTS } from "../lib/mock";
 import { resetFlow, setFlow } from "../lib/flow";
 import { navigate, useRoute } from "../lib/router";
 import { formatFen } from "../lib/format";
+import { hasVision } from "../lib/vision";
+import { toast } from "../lib/ui";
 import { NavBar } from "../components/ui";
 import { CameraIcon, ImageIcon } from "../components/icons";
 import type { BuiltinProduct } from "../types";
@@ -16,13 +18,29 @@ export default function Capture() {
 
   const handleFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const urls = Array.from(files)
-      .slice(0, 4)
-      .map((file) => URL.createObjectURL(file));
-    setPicked(urls);
-    resetFlow();
-    setFlow({ mode, imagePaths: urls });
-    navigate("/processing");
+    const chosen = Array.from(files).slice(0, 4);
+    // Read as data URLs: the local OCR and the optional vision model both need
+    // bytes they can read, while blob: URLs only live in this tab.
+    Promise.all(
+      chosen.map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ""));
+            reader.onerror = () => reject(new Error("这张图片没读出来，换一张试试"));
+            reader.readAsDataURL(file);
+          })
+      )
+    )
+      .then((urls) => {
+        setPicked(urls);
+        resetFlow();
+        setFlow({ mode, imagePaths: urls });
+        navigate("/processing");
+      })
+      .catch((err) => {
+        toast(err instanceof Error ? err.message : "图片读取失败");
+      });
   };
 
   const pickBuiltin = (item: BuiltinProduct) => {
@@ -33,7 +51,7 @@ export default function Capture() {
 
   return (
     <div className="page">
-      <NavBar title={mode === "receipt" ? "拍小票" : "拍商品"} sub="拍照或从相册选图，AI 自动处理" />
+      <NavBar title={mode === "receipt" ? "扫票" : "拍物"} sub="拍一张或者从相册挑，我来处理" />
 
       <section className="capture-actions">
         <button className="capture-card" onClick={() => cameraRef.current?.click()}>
@@ -41,14 +59,14 @@ export default function Capture() {
             <CameraIcon size={26} />
           </span>
           <strong>拍一张</strong>
-          <small>{mode === "receipt" ? "拍整张消费小票" : "拍想变成贴纸的东西"}</small>
+          <small>{mode === "receipt" ? "拍整张小票" : "拍想收进图鉴的东西"}</small>
         </button>
         <button className="capture-card" onClick={() => albumRef.current?.click()}>
           <span className="capture-icon">
             <ImageIcon size={26} />
           </span>
           <strong>从相册选</strong>
-          <small>{mode === "receipt" ? "一次最多 4 张" : "选一张清楚的图"}</small>
+          <small>{mode === "receipt" ? "一次最多 4 张" : "挑一张清楚的"}</small>
         </button>
       </section>
 
@@ -85,10 +103,16 @@ export default function Capture() {
               ? "背景干净、商品完整入镜，抠出来更干净。"
               : "把小票放平，光线充足，文字越清楚识别越准。"}
           </li>
-          <li>图片只在本机处理与保存，不会上传到服务器。</li>
           <li>
             {mode === "product"
-              ? "没有真实商品也可以直接选下面的内置图库体验。"
+              ? "图片只在本机预览，抠图和画风目前是演示。"
+              : hasVision()
+                ? "本地 OCR 先读字，随后把小票图发给已配置的视觉模型核对。"
+                : "图片只在本机用 OCR 读字，不会上传；配置视觉模型后才会上传核对。"}
+          </li>
+          <li>
+            {mode === "product"
+              ? "没有真实商品也可以直接选下面的样张体验。"
               : "没有真实小票也没关系，随便选一张图片就能体验识别流程。"}
           </li>
         </ul>
@@ -97,8 +121,8 @@ export default function Capture() {
       {mode === "product" && (
         <section className="section">
           <div className="section-head">
-            <h2>内置图库</h2>
-            <span className="muted small">点一下直接记账</span>
+            <h2>样张</h2>
+            <span className="muted small">点一下直接试</span>
           </div>
           <div className="builtin-grid">
             {BUILTIN_PRODUCTS.map((item) => (

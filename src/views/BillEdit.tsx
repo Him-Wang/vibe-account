@@ -65,14 +65,14 @@ export default function BillEdit() {
         source: "manual",
       });
     }
-    toast("已保存");
+    toast("记好了");
     window.setTimeout(() => back(), 320);
   };
 
   return (
     <div className="page">
       <NavBar
-        title={existing ? "编辑账单" : "手动记账"}
+        title={existing ? "改一笔" : "手记"}
         right={
           <button className="btn sm primary" onClick={save}>
             保存
@@ -81,7 +81,7 @@ export default function BillEdit() {
       />
 
       <section className="amount-card card">
-        <label className="amount-label">金额（元）</label>
+        <label className="amount-label">花了多少</label>
         <input
           className="amount-input"
           value={amount}
@@ -107,7 +107,7 @@ export default function BillEdit() {
                 {category.name}
               </>
             ) : (
-              "选择分类"
+              "挑个标签"
             )}
             <span className="go-arrow">›</span>
           </span>
@@ -117,7 +117,7 @@ export default function BillEdit() {
           <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </Field>
 
-        <Field label="备注">
+        <Field label="说点什么">
           <input
             className="input"
             value={note}
@@ -126,7 +126,7 @@ export default function BillEdit() {
           />
         </Field>
 
-        <Field label="商家（可选）">
+        <Field label="在哪儿花的（选填）">
           <input
             className="input"
             value={merchant}
@@ -136,7 +136,7 @@ export default function BillEdit() {
         </Field>
       </section>
 
-      <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="选择分类">
+      <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="挑个标签">
         <div className="cat-grid">
           {categories.map((c) => (
             <button

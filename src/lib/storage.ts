@@ -38,6 +38,14 @@ export function writeKey<T>(key: string, value: T): void {
   write(key, value);
 }
 
+export function removeKey(key: string): void {
+  try {
+    localStorage.removeItem(PREFIX + key);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function clearCollections(names: string[]): void {
   for (const name of names) {
     try {

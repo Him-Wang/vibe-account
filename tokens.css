@@ -1,0 +1,167 @@
+/* ============================================================
+   随口记 · 设计变量（方向 C / 糖纸贴贴）
+   —— 一套偏低饱和的马卡龙纸感系统：奶油底、墨蓝字、糖纸色块、
+      2px 墨线描边、硬投影、圆角贴纸。
+   所有页面（参考页 .html 与 React 应用）都从这里取色、取字号。
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* ---------- 基础色 ---------- */
+  --c-cream: #fff7e9;
+  --c-paper: #fffdf7;
+  --c-ink: #2b2a4c;
+  --c-lilac: #dcc9f4;
+  --c-mint: #c6e7d4;
+  --c-butter: #ffe3a6;
+  --c-sky: #c9dcf7;
+  --c-white: #ffffff;
+
+  /* 墨色的透明层次（描边、次要文字、禁用态） */
+  --c-ink-80: rgba(43, 42, 76, 0.8);
+  --c-ink-70: rgba(43, 42, 76, 0.72);
+  --c-ink-55: rgba(43, 42, 76, 0.56);
+  --c-ink-35: rgba(43, 42, 76, 0.35);
+  --c-ink-18: rgba(43, 42, 76, 0.18);
+  --c-ink-10: rgba(43, 42, 76, 0.1);
+
+  /* ---------- 语义色 ---------- */
+  --bg: var(--c-cream);
+  --surface: var(--c-paper);
+  --surface-sunk: #fdf3e2;
+  --text: var(--c-ink);
+  --text-muted: #5f5d73;      /* 4.9:1 on paper */
+  --text-faint: #6f6d82;      /* 4.3:1, 只用于 >=12px 的辅助字 */
+  --border-color: var(--c-ink);
+
+  --accent: var(--c-lilac);
+  --accent-2: var(--c-mint);
+  --accent-3: var(--c-butter);
+  --accent-4: var(--c-sky);
+
+  --tone-lilac: var(--c-lilac);
+  --tone-mint: var(--c-mint);
+  --tone-butter: var(--c-butter);
+  --tone-sky: var(--c-sky);
+
+  --danger: #7c5566;          /* 梅子色，明确不是红 */
+  --danger-soft: #f0e2ea;
+  --success: #4d7a5c;
+
+  /* ---------- 字体 ---------- */
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", Inter, "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", "Cascadia Mono", "Segoe UI Mono", Consolas,
+    monospace;
+  --font-round: "Segoe UI Variable Display", "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+
+  /* 字号阶梯：只保留 7 级，页面里不要临时写别的 px */
+  --fs-2xs: 12px;   /* 微型标签、角标 */
+  --fs-xs: 12px;    /* 辅助说明 */
+  --fs-sm: 12px;    /* 次要正文 */
+  --fs-base: 13px;  /* 正文 */
+  --fs-md: 15px;    /* 小标题、按钮 */
+  --fs-lg: 18px;    /* 区块标题、统计数字 */
+  --fs-xl: 24px;    /* 页面大数字 */
+  --fs-2xl: 31px;   /* 首屏主标题 */
+
+  --lh-tight: 1.15;
+  --lh-snug: 1.35;
+  --lh-body: 1.65;
+
+  --fw-bold: 700;
+  --fw-black: 850;
+  --fw-heavy: 900;
+
+  /* ---------- 圆角 ---------- */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 22px;
+  --r-2xl: 26px;
+  --r-pill: 999px;
+
+  /* ---------- 描边与投影 ---------- */
+  --bw: 2px;
+  --bw-thin: 1.5px;
+  --border: var(--bw) solid var(--c-ink);
+  --border-thin: var(--bw-thin) solid var(--c-ink);
+  --border-soft: var(--bw-thin) solid var(--c-ink-18);
+
+  --shadow-hard: 4px 4px 0 var(--c-ink);
+  --shadow-hard-sm: 3px 3px 0 var(--c-ink);
+  --shadow-hard-lg: 5px 5px 0 var(--c-ink);
+  --shadow-press: 1px 1px 0 var(--c-ink);
+  --shadow-soft: 0 10px 30px rgba(43, 42, 76, 0.1);
+
+  /* ---------- 间距 ---------- */
+  --s-1: 4px;
+  --s-2: 6px;
+  --s-3: 8px;
+  --s-4: 10px;
+  --s-5: 12px;
+  --s-6: 16px;
+  --s-7: 20px;
+  --s-8: 26px;
+
+  /* ---------- 布局 ---------- */
+  --app-max: 430px;
+  --gutter: 18px;
+  --safe-top: max(44px, env(safe-area-inset-top));
+  --safe-bottom: max(10px, env(safe-area-inset-bottom));
+  --tabbar-h: 60px;
+
+  /* ---------- 参考页 .html 的旧变量别名 ---------- */
+  --cream: var(--c-cream);
+  --paper: var(--c-paper);
+  --ink: var(--c-ink);
+  --lilac: var(--c-lilac);
+  --mint: var(--c-mint);
+  --butter: var(--c-butter);
+  --sky: var(--c-sky);
+  --mono: var(--font-mono);
+  --hard: var(--shadow-hard);
+  --hard-sm: var(--shadow-hard-sm);
+
+  /* ---------- React 应用的旧变量别名（逐步迁移） ---------- */
+  --brand: var(--c-lilac);
+  --brand-deep: var(--c-ink);
+  --brand-soft: #f5ecfd;
+  --cobalt: var(--c-sky);
+  --cobalt-deep: #4f5b80;
+  --cobalt-soft: #eef3fb;
+  --violet: var(--c-lilac);
+  --violet-deep: #6a5a8c;
+  --violet-soft: #f5ecfd;
+  --green: var(--c-mint);
+  --green-deep: #4d7a5c;
+  --green-soft: #eaf5ee;
+  --sun: var(--c-butter);
+  --sun-deep: #7a5a1e;
+  --sun-soft: #fff6e2;
+  --rose: #e7c3cf;
+  --rose-deep: #8a5c6d;
+  --rose-soft: #faeef2;
+  --ink-2: var(--c-ink);
+  --sub: var(--text-muted);
+  --weak: var(--text-faint);
+  --line: var(--c-ink-18);
+  --line-2: var(--c-ink-35);
+  --paper-2: #fdf3e2;
+  --surface-2: #fdf3e2;
+  --radius-lg: var(--r-2xl);
+  --radius: var(--r-xl);
+  --radius-sm: var(--r-md);
+  --shadow: var(--shadow-hard-sm);
+  --shadow-sm: var(--shadow-hard-sm);
+  --fs-meta: 10px;
+  --fs-small: 11px;
+  --fs-body: 13px;
+  --fs-title: 15px;
+  --fs-big: 18px;
+  --fs-amount: 31px;
+  --font-sans-old: var(--font-sans);
+}

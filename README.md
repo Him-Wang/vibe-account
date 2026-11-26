@@ -1,23 +1,28 @@
-# Vibe Account
+# 随口记 · 说一句，账就记好了
 
-> 说一句，账就记好了。
+> 语音优先、纯网页、只存本机的记账本。
 
-一个**语音优先**的本地记账网页应用：对着麦克风说「午饭 35，打车 18，买咖啡 22」，它会自动拆成三笔、分好类、记进当天的账里。所有数据只存在浏览器本地，随时可以导出或清空。
+对着麦克风说「午饭 35，打车 18，买咖啡 22」，随口记会拆成三笔、分好类、记进今天。也可以扫小票（浏览器里跑 OCR）、把喜欢的东西抠成贴纸，贴进自己的贴册。
 
-纯网页版，无需安装，打开就能用，也可以加到手机主屏当 app。
+数据只存在浏览器 `localStorage`，没有服务端，随时导出或清空。默认已经接好一个公开演示用的 Cloudflare Worker（文本解析 / 看账），不需要自己准备 Key。
 
-界面按「先说话、再打字」来排：首页中间是一个语音球，下面是输入条和快捷入口；底部四个标签是 **记录 / 账本 / 手账 / 我的**。
+## 四个入口
 
-## 功能
+- **说一句**：用说的记一笔；也能打字，或扫小票、拍物、手记。
+- **流水**：按月看花了多少、分到哪些标签、按天排的每一笔。
+- **贴册**：把小票、贴纸和碎碎念贴进纸里，导出成图片。
+- **本机**：标签册、图鉴、偏好、保险箱（备份 / 导入 / 清空）。
 
-- **语音记账**：浏览器 Web Speech API 实时转写，说完自动拆成多笔。
-- **文字解析**：一句话里的多笔金额按标点拆分；配了 OpenAI 兼容接口就走大模型，没配就用本地规则。
-- **手动记账**：金额、分类、日期、商家、备注，随时补一笔。
-- **拍小票**：拍照或选图 → 识别商家与明细 → 核对后一次落账（Mock 演示流程）。
-- **拍商品 / 贴纸**：抠图 + 四种动漫化风格，记账的同时生成贴纸。
-- **手账**：Canvas 画布，纸色背景、emoji 与贴纸、文字、画笔、撤销，导出 1x / 2x / 3x PNG。
-- **账本统计**：按月查看总额、分类占比条、按日分组。
-- **隐私**：一键导出 JSON、导入合并、清空全部数据；无服务端。
+其余页面沿用同一套叫法：**核对小票**、**收下这件**、**图鉴**、**偏好**、**保险箱**、**这笔账**。
+
+## 设计
+
+「糖纸贴贴」：奶油纸底 + 点阵、墨蓝描边、硬投影，薰衣草 / 薄荷 / 黄油 / 天空四块柔色；圆角贴纸块与窄体数字并置。
+
+- 设计变量在 `tokens.css`，组件覆写在 `src/candy.css`。
+- 响应式：手机是单列 + 底部胶囊导航；≥ 1024px 切换成左侧竖向导航和首页双栏（左边记账、右边最近记录），表单页收窄为阅读栏。
+- 路由用 hash（`#/bills`），构建产物可放在任意子路径。
+- 首页原型：`.html`（本地开发时访问 `http://localhost:5173/.html`；这是设计参照页，不参与构建）。
 
 ## 快速开始
 
@@ -28,36 +33,67 @@ npm run build
 npm run preview
 ```
 
-## AI 解析（可选）
+## 部署到 GitHub Pages
 
-在「我的 → 设置」里填一个 OpenAI 兼容接口：
+仓库已带 `.github/workflows/deploy.yml`，线上地址：
 
-- 接口地址：如 `https://api.deepseek.com/v1`
-- 模型：如 `deepseek-chat`
-- API Key：只存在本机浏览器的 localStorage
+**https://him-wang.github.io/vibe-account/**
 
-不填也能用，本地规则能识别常见说法与金额。
+1. 推到 `main` 会自动跑 workflow。
+2. 仓库 **Settings → Pages → Build and deployment → Source** 已设为 **GitHub Actions**。
+3. 也可以在 Actions 页手动 `Run workflow`。
+
+`vite.config.ts` 的 `base: "./"` 让静态资源按相对路径加载，仓库名变化也不用改配置。注意：首次扫票 / 抠图会从 CDN / Hugging Face 下载识别模型，需要联网；静态站本身不需要后端。
+
+## AI 与识别（都可选）
+
+默认已经预置公开演示 Worker，开箱能「看账」和做文本解析；下面这些也都能自己换：
+
+- **语音与文字解析**：把一句话拆成多笔；不填就走本地规则，填了才会把这句话发给该接口。
+- **小票视觉核对**：不启用时，扫票只用浏览器里的 Tesseract 本地 OCR；启用后先在本机读一遍字，再把压缩后的图片和文字交给视觉模型核对。图片只在这个开关打开时才离开浏览器。
+- **语音输入**：不启用时用浏览器自带语音（Chrome / Edge / Safari）；填一个转写接口（如 `whisper-1`）后，用 MediaRecorder 录完再转写，其他现代浏览器也能用。
+- **图片生成**：不启用时，拍物只做本地抠图并保存；配置一个支持 `POST /images/edits` 的接口（如 OpenAI `gpt-image-1`）后，点「可爱 / 漫画 / 油画 / 素描」才会真的生成画风，并把结果作为贴纸的 `animeFileId` 保存。商品图只在这个开关打开时才发出去。
+- **看账**：配置「语音与文字解析」后，首页会出现 AI 条；点进去会把当月汇总（分类、常去商家、最大一笔的名字）发给该接口，换回一句总结、几条观察和 3 条省钱建议。没配置时仍能在本机看基础结论。
+
+Key 都只存在本机 `localStorage`。第一次跑本地 OCR 会从 CDN 下载中文模型（约 15MB）和 worker，之后浏览器会缓存；小票图片不经过这个下载。拍物抠图首次会下载 BiRefNet-lite（约 94MB，之后浏览器缓存），在本机 WebGPU/WASM 里跑，不上传原图。
+
+> 直接调第三方视觉 / 转写接口需要对方允许浏览器跨域（CORS）。遇到 CORS 报错，可以自己搭一个 serverless 代理：浏览器只把请求发给你自己的函数，由函数带上 Key 转发，同时把 Key 留在服务端。纯本机使用不需要代理。
+
+仓库里带了两种可部署的 Cloudflare Worker，步骤见 [`serverless/README.md`](serverless/README.md)：
+
+- `serverless/worker.mjs`：转发到你自己的上游 Key，浏览器只拿 `PROXY_TOKEN`。
+- `serverless/worker-ai.mjs`：绑定 Cloudflare Workers AI，自带文本和视觉模型，不需要上游 Key。项目默认的公开演示 Worker 就是这个版本：`https://suikouji-ai.crushlens.workers.dev/v1`。
+
+默认设置的演示额度是公开的，只够体验；想稳定用，按 `serverless/README.md` 部署自己的 Worker 并换掉「偏好」里的接口地址 / Key。
 
 ## 语音
 
-语音识别用浏览器自带的 Web Speech API（Chrome / Edge / Safari 支持较好），需要麦克风权限；不支持的浏览器会退化为纯文字输入。
+默认用浏览器自带的 Web Speech API（Chrome / Edge / Safari 支持较好），需要麦克风权限；不支持的浏览器退化为文字输入。在「偏好 → 语音输入」填了转写接口后，会改用 MediaRecorder 录音 + 服务端转写，不再依赖 Web Speech。
 
 ## 数据
 
-全部存在浏览器 `localStorage`，键前缀 `vibe-account:v1:`，共五个集合：`bills` / `categories` / `stickers` / `journalBooks` / `journals`。
+键前缀 `vibe-account:v1:`，五个集合：`bills` / `categories` / `stickers` / `journalBooks` / `journals`；另有 `settings` 保存接口地址、模型与 Key。全部在本机浏览器，导出 JSON 即可备份（解析设置不在导出范围内，清空数据时会一起抹掉）。
 
 ## 目录
 
 ```
+tokens.css          设计变量（颜色、字号、圆角、投影、间距）
+serverless/         可选的 Cloudflare Worker 代理（视觉 / 转写）
 src/
+  candy.css         糖纸贴贴组件层
   App.tsx           路由与外框
-  views/            16 个页面
-  components/       TabBar、通用 UI、图标
+  views/            17 个页面
+  components/       导航、页签、通用 UI、图标、Logo
   lib/              storage / bills / categories / journals / stickers /
-                    ai / speech / mock / data / router / ui / format
-  styles.css        设计令牌与全部样式
+                    ai / ocr / vision / asr / imagegen / cutout / insights /
+                    stickerArt / speech / mock / router / format
+.html               首页设计参照（仅本地）
+drafts/-b.html      另一版方向草稿（仅本地）
 ```
 
 ## 说明
 
-小票识别、抠图、动漫化目前是本地 Mock 流程，用于完整跑通交互；接入真实服务时替换 `src/lib/ai.ts` 里的实现即可。
+- **小票**：真实可用的本地 OCR（`tesseract.js`），识别文字后在本机解析商家、日期、明细与合计；图片不会上传。配置视觉模型后才会把图片发给你指定的接口做核对。
+- **拍物**：抠图用本地 BiRefNet-lite（`@huggingface/transformers`，浏览器内跑，首次下载模型）；没有配置图片生成时保留抠图，配置了才会生成画风。内置样张会生成一张本地 SVG 贴纸，不再显示 📦。
+- **语音**：默认用浏览器语音；配置转写接口后改用录音上传。
+- **存储**：浏览器配额满时写入会失败；如果图片很多，建议先导出备份，再清理贴册。公开演示 Worker 的额度有限，适合体验，不适合长期大量使用。

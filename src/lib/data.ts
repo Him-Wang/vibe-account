@@ -1,6 +1,7 @@
 import type { Bill, Category, JournalBook, JournalPage, Sticker } from "../types";
 import { collection } from "./db";
 import { categoryService } from "./categories";
+import { resetSettings } from "./settings";
 
 export interface Backup {
   app: "vibe-account";
@@ -58,6 +59,7 @@ export const dataService = {
 
   clearAll(): void {
     for (const name of NAMES) collection(name).write([]);
+    resetSettings();
     categoryService.ensureSeeded();
   },
 

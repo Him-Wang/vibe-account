@@ -42,13 +42,18 @@ export default function ReceiptConfirm() {
   if (!ocr) {
     return (
       <div className="page">
-        <NavBar title="确认账单" />
+        <NavBar title="核对小票" />
         <p className="muted">没有识别结果，回去重新拍一张吧。</p>
       </div>
     );
   }
 
   const total = rows.reduce((sum, r) => sum + Math.round(r.unitPrice * r.qty), 0);
+  const providerLabel = ocr.provider.startsWith("vision:")
+    ? "视觉模型核对"
+    : ocr.provider === "local-ocr"
+      ? "本地 OCR"
+      : "演示识别";
 
   const setUnit = (index: number, text: string) => {
     const next = [...rows];
@@ -103,13 +108,13 @@ export default function ReceiptConfirm() {
       })),
     });
     resetFlow();
-    toast("已记账");
+    toast("记好了");
     window.setTimeout(() => replace("/bills"), 300);
   };
 
   return (
     <div className="page">
-      <NavBar title="确认账单" sub="识别结果可以随手改" />
+      <NavBar title="核对小票" sub="认错了就改，别客气" />
 
       <section className="receipt-preview card">
         {flow.imagePaths[0] ? (
@@ -119,9 +124,16 @@ export default function ReceiptConfirm() {
         )}
         <div className="receipt-meta">
           <span className="pill">置信度 {Math.round((ocr.confidence || 0) * 100)}%</span>
-          <span className="pill muted-pill">Mock 识别</span>
+          <span className="pill muted-pill">{providerLabel}</span>
         </div>
       </section>
+
+      {ocr.rawText && (
+        <details className="ocr-raw">
+          <summary>看识别原文</summary>
+          <pre>{ocr.rawText}</pre>
+        </details>
+      )}
 
       <section className="card form">
         <label className="field">
@@ -148,9 +160,9 @@ export default function ReceiptConfirm() {
 
       <section className="card">
         <div className="section-head">
-          <h3 className="card-title">消费明细</h3>
+          <h3 className="card-title">这一单买了什么</h3>
           <button className="icon-link" onClick={addRow}>
-            ＋添加
+            ＋ 加一项
           </button>
         </div>
         <div className="items">
@@ -199,7 +211,7 @@ export default function ReceiptConfirm() {
           合计 <strong>¥{formatFen(total)}</strong>
         </span>
         <button className="btn primary" onClick={save}>
-          保存账单
+          收进流水
         </button>
       </div>
 

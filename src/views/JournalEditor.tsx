@@ -318,7 +318,7 @@ export default function JournalEditor() {
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = "vibe-account-手账.png";
+    a.download = "suikouji-tieben.png";
     a.click();
     toast(`已导出 ${scale}x 图片`);
     setExportOpen(false);
@@ -326,7 +326,7 @@ export default function JournalEditor() {
 
   const save = () => {
     if (!book) {
-      toast("找不到这本手账");
+      toast("找不到这本贴册");
       return;
     }
     const payload = {
@@ -355,8 +355,8 @@ export default function JournalEditor() {
   return (
     <div className="page editor-page">
       <NavBar
-        title={page ? `第 ${page.index + 1} 页` : "新的一页"}
-        sub={book?.title || "手账"}
+        title={page ? `第 ${page.index + 1} 页` : "新贴页"}
+        sub={book?.title || "贴册"}
         right={
           <button className="btn sm primary" onClick={save}>
             保存
@@ -450,7 +450,7 @@ export default function JournalEditor() {
 
         {tab === "saved" && (
           <div className="sticker-grid small">
-            {savedStickers.length === 0 && <p className="muted small">还没有贴纸，去拍个商品吧。</p>}
+            {savedStickers.length === 0 && <p className="muted small">还没有贴纸，去拍一件吧。</p>}
             {savedStickers.map((s) => (
               <button
                 key={s._id}

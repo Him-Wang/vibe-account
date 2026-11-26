@@ -1,0 +1,11 @@
+name = "suikouji-proxy"
+main = "worker.mjs"
+compatibility_date = "2026-11-26"
+
+# 建议把 ALLOW_ORIGIN 改成你的 Pages 域名，例如
+#   ALLOW_ORIGIN = "https://your-name.github.io"
+[vars]
+ALLOW_ORIGIN = "*"
+UPSTREAM_BASE = "https://api.openai.com/v1"
+# 如果语音转写要发给另一家，取消下面这行的注释：
+# UPSTREAM_BASE_ASR = "https://api.openai.com/v1"

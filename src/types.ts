@@ -129,6 +129,21 @@ export interface Settings {
   apiKey: string;
   glass: boolean;
   aiMockMode: AiMockMode;
+  /** 视觉模型：留空 key 就只用本地 OCR */
+  visionPreset: string;
+  visionBaseUrl: string;
+  visionModel: string;
+  visionApiKey: string;
+  /** 录音转写：留空 key 就用浏览器自带语音识别 */
+  asrPreset: string;
+  asrBaseUrl: string;
+  asrModel: string;
+  asrApiKey: string;
+  /** 图片生成：配置后才真正生成动漫/油画等画风 */
+  imagePreset: string;
+  imageBaseUrl: string;
+  imageModel: string;
+  imageApiKey: string;
 }
 
 export interface OcrItem {

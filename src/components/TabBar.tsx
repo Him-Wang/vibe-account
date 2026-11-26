@@ -2,10 +2,10 @@ import { navigate, useRoute } from "../lib/router";
 import { BillsIcon, HomeIcon, JournalIcon, MineIcon } from "./icons";
 
 const TABS = [
-  { to: "/", icon: <HomeIcon />, label: "记录" },
-  { to: "/bills", icon: <BillsIcon />, label: "账本" },
-  { to: "/journal", icon: <JournalIcon />, label: "手账" },
-  { to: "/mine", icon: <MineIcon />, label: "我的" },
+  { to: "/", icon: <HomeIcon />, label: "说一句" },
+  { to: "/bills", icon: <BillsIcon />, label: "流水" },
+  { to: "/journal", icon: <JournalIcon />, label: "贴册" },
+  { to: "/mine", icon: <MineIcon />, label: "本机" },
 ];
 
 export function TabBar() {

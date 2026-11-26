@@ -15,7 +15,7 @@ export default function JournalBook() {
 
   useEffect(() => {
     if (!book) {
-      toast("这本手账不见了");
+      toast("这本贴册不见了");
       navigate("/journal");
     }
   }, [book]);
@@ -37,15 +37,15 @@ export default function JournalBook() {
 
   return (
     <div className="page" data-version={version}>
-      <NavBar title={book.title} sub={`共 ${pages.length} 页 · 长按页面可删除`} />
+      <NavBar title={book.title} sub={`共 ${pages.length} 页 · 长按可以撕掉`} />
 
       {pages.length === 0 ? (
         <Empty
           icon={<JournalIcon size={26} />}
-          text="这一本还没有页面"
+          text="这一本还空着"
           action={
             <button className="btn primary" onClick={() => navigate(`/journal/editor?bookId=${bookId}`)}>
-              写第一页
+              贴第一页
             </button>
           }
         />
@@ -56,7 +56,7 @@ export default function JournalBook() {
             onClick={() => navigate(`/journal/editor?bookId=${bookId}`)}
           >
             <span>＋</span>
-            <small>新建页面</small>
+            <small>新贴页</small>
           </button>
 
           {pages.map((page) => (

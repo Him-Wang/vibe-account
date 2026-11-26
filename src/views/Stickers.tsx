@@ -12,7 +12,7 @@ export default function Stickers() {
   const remove = async (id: string, name: string) => {
     const ok = await confirmDialog({
       title: `删除「${name}」？`,
-      content: "账单不会受影响，只是这张贴纸没了。",
+      content: "账目不受影响，只是这张贴纸没了。",
       danger: true,
       confirmText: "删除",
     });
@@ -24,10 +24,10 @@ export default function Stickers() {
 
   return (
     <div className="page" data-version={version}>
-      <NavBar title="贴纸库" sub="拍商品时自动收进来" />
+      <NavBar title="图鉴" sub="拍物时自动收进来" />
 
       {list.length === 0 ? (
-        <Empty icon={<StickerIcon size={26} />} text="还没有贴纸，去拍个商品试试" />
+        <Empty icon={<StickerIcon size={26} />} text="图鉴还空着，去拍一件试试" />
       ) : (
         <div className="sticker-grid">
           {list.map((s) => (
