@@ -7,7 +7,7 @@ export interface BillItem {
   amount: number;
 }
 
-/** A single expense record. `amount` is in cents (åˆ?. */
+/** A single expense record. `amount` is in cents. */
 export interface Bill {
   _id: string;
   amount: number;

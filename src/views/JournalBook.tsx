@@ -3,6 +3,7 @@ import { journalService } from "../lib/journals";
 import { match, navigate, useRoute } from "../lib/router";
 import { confirmDialog, toast } from "../lib/ui";
 import { Empty, NavBar } from "../components/ui";
+import { JournalIcon } from "../components/icons";
 
 export default function JournalBook() {
   const route = useRoute();
@@ -38,40 +39,50 @@ export default function JournalBook() {
     <div className="page" data-version={version}>
       <NavBar title={book.title} sub={`共 ${pages.length} 页 · 长按页面可删除`} />
 
-      <div className="page-grid">
-        <button
-          className="page-cell new"
-          onClick={() => navigate(`/journal/editor?bookId=${bookId}`)}
-        >
-          <span>＋</span>
-          <small>新建页面</small>
-        </button>
-
-        {pages.map((page) => (
+      {pages.length === 0 ? (
+        <Empty
+          icon={<JournalIcon size={26} />}
+          text="这一本还没有页面"
+          action={
+            <button className="btn primary" onClick={() => navigate(`/journal/editor?bookId=${bookId}`)}>
+              写第一页
+            </button>
+          }
+        />
+      ) : (
+        <div className="page-grid">
           <button
-            key={page._id}
-            className="page-cell"
-            style={{ background: page.background.value }}
-            onPointerDown={() => {
-              window.clearTimeout(timer.current);
-              timer.current = window.setTimeout(() => removePage(page._id, page.index), 600);
-            }}
-            onPointerUp={() => window.clearTimeout(timer.current)}
-            onPointerLeave={() => window.clearTimeout(timer.current)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              removePage(page._id, page.index);
-            }}
-            onClick={() => navigate(`/journal/editor?bookId=${bookId}&pageId=${page._id}`)}
+            className="page-cell new"
+            onClick={() => navigate(`/journal/editor?bookId=${bookId}`)}
           >
-            <span className="page-no">P{page.index + 1}</span>
-            <span className="page-meta">🧩 {page.elements.length}</span>
-            <small>{page.date}</small>
+            <span>＋</span>
+            <small>新建页面</small>
           </button>
-        ))}
-      </div>
 
-      {pages.length === 0 && <Empty icon="📄" text="还没有页面，先写一页吧" />}
+          {pages.map((page) => (
+            <button
+              key={page._id}
+              className="page-cell"
+              style={{ background: page.background.value }}
+              onPointerDown={() => {
+                window.clearTimeout(timer.current);
+                timer.current = window.setTimeout(() => removePage(page._id, page.index), 600);
+              }}
+              onPointerUp={() => window.clearTimeout(timer.current)}
+              onPointerLeave={() => window.clearTimeout(timer.current)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                removePage(page._id, page.index);
+              }}
+              onClick={() => navigate(`/journal/editor?bookId=${bookId}&pageId=${page._id}`)}
+            >
+              <span className="page-no">P{page.index + 1}</span>
+              <span className="page-meta">{page.elements.length} 个元素</span>
+              <small>{page.date}</small>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

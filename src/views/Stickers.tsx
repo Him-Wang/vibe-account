@@ -2,6 +2,7 @@ import { useState } from "react";
 import { stickerService } from "../lib/stickers";
 import { confirmDialog, toast } from "../lib/ui";
 import { Empty, NavBar } from "../components/ui";
+import { StickerIcon } from "../components/icons";
 
 export default function Stickers() {
   const [version, setVersion] = useState(0);
@@ -26,7 +27,7 @@ export default function Stickers() {
       <NavBar title="贴纸库" sub="拍商品时自动收进来" />
 
       {list.length === 0 ? (
-        <Empty icon="🃏" text="还没有贴纸，去拍个商品试试" />
+        <Empty icon={<StickerIcon size={26} />} text="还没有贴纸，去拍个商品试试" />
       ) : (
         <div className="sticker-grid">
           {list.map((s) => (

@@ -7,7 +7,7 @@ import { currentMonth, dayLabel, formatFen, monthLabel, today, yuanToFen } from 
 import { toast } from "../lib/ui";
 import { navigate } from "../lib/router";
 import { Empty, Sheet } from "../components/ui";
-import { BillsIcon, CartIcon, JournalIcon, ReceiptIcon } from "../components/icons";
+import { CartIcon, MicIcon, PencilIcon, ReceiptIcon, SendIcon } from "../components/icons";
 import type { Category } from "../types";
 
 interface EditRow extends ParsedBill {
@@ -15,12 +15,15 @@ interface EditRow extends ParsedBill {
   amountText: string;
 }
 
+const MIC_TIP = "点一下说话，比如「午饭 35，打车 18」";
+
 export default function Home() {
   const month = useMemo(() => currentMonth(), []);
   const [summary, setSummary] = useState(() => billService.monthSummary(month));
   const [todayTotal, setTodayTotal] = useState(() => billService.dayTotal(today()));
   const [recent, setRecent] = useState(() => billService.list().slice(0, 5));
   const [text, setText] = useState("");
+  const [live, setLive] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -40,8 +43,9 @@ export default function Home() {
 
   const greet = () => {
     const h = new Date().getHours();
-    if (h < 6) return "夜深了";
-    if (h < 12) return "早上好";
+    if (h < 6) return "还没睡呀";
+    if (h < 11) return "早上好";
+    if (h < 14) return "中午好";
     if (h < 18) return "下午好";
     return "晚上好";
   };
@@ -73,19 +77,23 @@ export default function Home() {
   };
 
   const speak = async () => {
+    if (busy) return;
     if (!speechSupported()) {
       toast("这个浏览器不支持语音，先用文字记吧");
       return;
     }
     setListening(true);
+    setLive("");
     try {
-      const transcript = await listenOnce();
+      const transcript = await listenOnce((partial) => setLive(partial));
       setText(transcript);
+      setLive("");
       await startParse(transcript, "voice");
     } catch (err) {
       toast(err instanceof Error ? err.message : "语音识别失败");
     } finally {
       setListening(false);
+      setLive("");
     }
   };
 
@@ -102,8 +110,8 @@ export default function Home() {
       billService.create({
         amount: row.cents,
         date: row.date || today(),
-        note: row.note,
         merchant: row.merchant || "",
+        note: row.note,
         categoryId: cat._id,
         categoryName: cat.name,
         categoryIcon: cat.icon,
@@ -118,119 +126,146 @@ export default function Home() {
     reload();
   };
 
+  const transcript = listening ? live : text;
+  const showPlaceholder = !transcript && !listening && !busy;
+
   return (
     <div className="page">
-      <header className="home-head">
-        <div>
-          <p className="muted small">{monthLabel(month)} · 拾光账本</p>
-          <h1>{greet()}，拾光用户</h1>
+      <header className="home-top">
+        <span className="wordmark">Vibe Account</span>
+        <div className="home-top-right">
+          <div className="mini-total">
+            <strong>¥{formatFen(summary.total)}</strong>
+            <small>{monthLabel(month)} 支出</small>
+          </div>
+          <button className="avatar" onClick={() => navigate("/mine")} aria-label="我的">
+            V
+          </button>
         </div>
-        <button className="avatar" onClick={() => navigate("/mine")}>
-          拾
-        </button>
       </header>
 
-      <section className="hero">
-        <div className="hero-glow" />
-        <p className="hero-label">本月支出</p>
-        <div className="hero-amount">
-          <span>¥</span>
-          {formatFen(summary.total)}
+      <div className="greeting">
+        <h1>{greet()}</h1>
+        <p>
+          {summary.count > 0
+            ? `${monthLabel(month)}记了 ${summary.count} 笔，今天 ¥${formatFen(todayTotal)}`
+            : "说一句话，账就记好了"}
+        </p>
+      </div>
+
+      <section className="stage">
+        <div className="stage-glow" />
+        <p className={showPlaceholder ? "transcript placeholder" : "transcript"}>
+          {listening
+            ? live || "我在听…"
+            : busy
+              ? "稍微等我拆一下…"
+              : text || "说一句话，我帮你拆成每一笔"}
+        </p>
+
+        <div className="orb-wrap">
+          {listening && (
+            <div className="rings" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+          )}
+          <button
+            className={`orb${listening ? " listening" : ""}${busy ? " thinking" : ""}`}
+            onClick={speak}
+            aria-label={listening ? "正在听" : "开始语音记账"}
+          >
+            <MicIcon size={44} />
+          </button>
+          {listening && (
+            <div className="wave" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+          )}
         </div>
-        <p className="hero-sub">
-          共 {summary.count} 笔 · 今日 ¥{formatFen(todayTotal)}
+
+        <p className="voice-hint">
+          {listening
+            ? "说完稍等一下，自动帮你拆成多笔"
+            : busy
+              ? "正在理解这句话…"
+              : speechSupported()
+                ? MIC_TIP
+                : "当前浏览器不支持语音，可以直接打字"}
         </p>
       </section>
 
-      <section className="card composer">
-        <div className="composer-head">
-          <strong>说一句话，自动拆成多笔</strong>
-          <span className="pill">{speechSupported() ? "支持语音" : "文字输入"}</span>
-        </div>
+      <div className="composer">
         <textarea
           className="composer-input"
-          rows={2}
+          rows={1}
           value={text}
-          placeholder="例如：午饭 35，打车 18，买咖啡 22"
+          placeholder="也可以打字：午饭 35，打车 18"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) startParse(text, "text");
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              if (!busy) startParse(text, "text");
+            }
           }}
         />
-        <div className="composer-actions">
-          <button
-            className={listening ? "btn mic listening" : "btn mic"}
-            onClick={speak}
-            disabled={busy || listening}
-          >
-            {listening ? "正在听…" : "🎙 说一句"}
-          </button>
-          <button className="btn primary" onClick={() => startParse(text, "text")} disabled={busy}>
-            {busy ? "解析中…" : "记一笔"}
-          </button>
-          <button className="icon-link" onClick={() => navigate("/bills/edit")}>
-            手动添加
-          </button>
-        </div>
-      </section>
+        <button
+          className="send"
+          onClick={() => startParse(text, "text")}
+          disabled={busy || !text.trim()}
+          aria-label="解析并记账"
+        >
+          <SendIcon />
+        </button>
+      </div>
 
-      <section className="quick-grid">
+      <div className="quick-row">
         <button className="quick" onClick={() => navigate("/capture?mode=receipt")}>
-          <span className="quick-icon">
-            <ReceiptIcon />
-          </span>
-          <strong>拍小票</strong>
-          <small>识别明细</small>
+          <ReceiptIcon size={17} />
+          拍小票
         </button>
         <button className="quick" onClick={() => navigate("/capture?mode=product")}>
-          <span className="quick-icon">
-            <CartIcon />
-          </span>
-          <strong>拍商品</strong>
-          <small>生成贴纸</small>
+          <CartIcon size={17} />
+          拍商品
         </button>
-        <button className="quick" onClick={() => navigate("/bills")}>
-          <span className="quick-icon">
-            <BillsIcon />
-          </span>
-          <strong>账单</strong>
-          <small>按月查看</small>
+        <button className="quick" onClick={() => navigate("/bills/edit")}>
+          <PencilIcon size={17} />
+          手写一笔
         </button>
-        <button className="quick" onClick={() => navigate("/journal")}>
-          <span className="quick-icon">
-            <JournalIcon />
-          </span>
-          <strong>手账</strong>
-          <small>写一页</small>
-        </button>
-      </section>
+      </div>
 
       <section className="section">
         <div className="section-head">
-          <h2>最近账单</h2>
+          <h2>最近记录</h2>
           <button className="icon-link" onClick={() => navigate("/bills")}>
             全部 ›
           </button>
         </div>
         {recent.length === 0 ? (
-          <Empty icon="📭" text="还没有账单，说一句话试试" />
+          <Empty icon={<MicIcon size={26} />} text="还没有记录，说句话试试" />
         ) : (
-          <div className="card list">
+          <div className="timeline">
             {recent.map((bill) => (
-              <button key={bill._id} className="bill-row" onClick={() => navigate(`/bills/${bill._id}`)}>
+              <button key={bill._id} className="trow" onClick={() => navigate(`/bills/${bill._id}`)}>
                 <span
-                  className="bill-icon"
+                  className="trow-icon"
                   style={{ background: bill.categoryColor + "26", color: bill.categoryColor }}
                 >
                   {bill.categoryIcon}
                 </span>
-                <span className="bill-main">
+                <span className="trow-main">
                   <strong>{bill.note || bill.merchant || bill.categoryName}</strong>
                   <small>
                     {dayLabel(bill.date)} · {bill.categoryName}
+                    {bill.source === "voice" ? " · 语音" : ""}
                   </small>
                 </span>
-                <span className="bill-amount">-¥{formatFen(bill.amount)}</span>
+                <span className="trow-amount">-¥{formatFen(bill.amount)}</span>
               </button>
             ))}
           </div>
@@ -245,6 +280,7 @@ export default function Home() {
                 className="parse-amount"
                 value={row.amountText}
                 inputMode="decimal"
+                aria-label="金额"
                 onChange={(e) => {
                   const next = [...rows];
                   next[index] = { ...row, amountText: e.target.value };
@@ -254,6 +290,7 @@ export default function Home() {
               <input
                 className="parse-note"
                 value={row.note}
+                aria-label="备注"
                 onChange={(e) => {
                   const next = [...rows];
                   next[index] = { ...row, note: e.target.value };
@@ -263,6 +300,7 @@ export default function Home() {
               <select
                 className="parse-cat"
                 value={row.category}
+                aria-label="分类"
                 onChange={(e) => {
                   const next = [...rows];
                   next[index] = { ...row, category: e.target.value };
@@ -285,7 +323,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <p className="muted small">
+        <p className="muted small" style={{ marginTop: 10 }}>
           合计 ¥
           {formatFen(rows.reduce((s, r) => s + Math.max(0, yuanToFen(Number(r.amountText))), 0))}
         </p>

@@ -62,9 +62,9 @@ async function gate(): Promise<void> {
 export async function mockOcr(): Promise<OcrResult> {
   await gate();
   return {
-    rawText: "拾光咖啡\n美式咖啡 1 x 22.00 22.00\n拿铁咖啡 1 x 28.00 28.00\n合计 50.00",
+    rawText: "街角咖啡\n美式咖啡 1 x 22.00 22.00\n拿铁咖啡 1 x 28.00 28.00\n合计 50.00",
     parsed: {
-      merchant: "拾光咖啡",
+      merchant: "街角咖啡",
       date: today(),
       items: [
         { name: "美式咖啡", qty: 1, unitPrice: 2200, amount: 2200 },

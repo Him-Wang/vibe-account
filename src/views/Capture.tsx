@@ -4,6 +4,7 @@ import { resetFlow, setFlow } from "../lib/flow";
 import { navigate, useRoute } from "../lib/router";
 import { formatFen } from "../lib/format";
 import { NavBar } from "../components/ui";
+import { CameraIcon, ImageIcon } from "../components/icons";
 import type { BuiltinProduct } from "../types";
 
 export default function Capture() {
@@ -36,14 +37,18 @@ export default function Capture() {
 
       <section className="capture-actions">
         <button className="capture-card" onClick={() => cameraRef.current?.click()}>
-          <span className="capture-icon">📷</span>
+          <span className="capture-icon">
+            <CameraIcon size={26} />
+          </span>
           <strong>拍一张</strong>
-          <small>{mode === "receipt" ? "拍整张消费小票" : "拍想要变成贴纸的东西"}</small>
+          <small>{mode === "receipt" ? "拍整张消费小票" : "拍想变成贴纸的东西"}</small>
         </button>
         <button className="capture-card" onClick={() => albumRef.current?.click()}>
-          <span className="capture-icon">🖼️</span>
+          <span className="capture-icon">
+            <ImageIcon size={26} />
+          </span>
           <strong>从相册选</strong>
-          <small>可一次选多张小票</small>
+          <small>{mode === "receipt" ? "一次最多 4 张" : "选一张清楚的图"}</small>
         </button>
       </section>
 

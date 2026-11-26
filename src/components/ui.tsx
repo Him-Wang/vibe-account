@@ -30,7 +30,7 @@ export function NavBar({
   );
 }
 
-export function Empty({ icon, text, action }: { icon: string; text: string; action?: ReactNode }) {
+export function Empty({ icon, text, action }: { icon: ReactNode; text: string; action?: ReactNode }) {
   return (
     <div className="empty">
       <div className="empty-icon">{icon}</div>
@@ -135,7 +135,7 @@ export function GoRow({
   to,
   onClick,
 }: {
-  icon: string;
+  icon: ReactNode;
   title: string;
   desc?: string;
   to?: string;

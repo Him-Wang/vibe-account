@@ -5,6 +5,7 @@ import { genId } from "../lib/storage";
 import { back, useRoute } from "../lib/router";
 import { promptDialog, toast } from "../lib/ui";
 import { NavBar, Sheet } from "../components/ui";
+import { BrushIcon, DownloadIcon, PaletteIcon, StickerIcon, TextIcon, UndoIcon } from "../components/icons";
 import type { PageElement, StickerElement, TextElement, DrawElement } from "../types";
 
 const PAPERS = [
@@ -317,7 +318,7 @@ export default function JournalEditor() {
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
     a.href = url;
-    a.download = "拾光手账.png";
+    a.download = "vibe-account-手账.png";
     a.click();
     toast(`已导出 ${scale}x 图片`);
     setExportOpen(false);
@@ -376,28 +377,34 @@ export default function JournalEditor() {
 
       <div className="editor-tools">
         <button className={panel === "bg" ? "tool active" : "tool"} onClick={() => setPanel(panel === "bg" ? null : "bg")}>
-          <span>🎨</span>背景
+          <PaletteIcon size={19} />
+          背景
         </button>
         <button
           className={panel === "sticker" ? "tool active" : "tool"}
           onClick={() => setPanel(panel === "sticker" ? null : "sticker")}
         >
-          <span>🧩</span>贴纸
+          <StickerIcon size={19} />
+          贴纸
         </button>
         <button className="tool" onClick={addText}>
-          <span>✏️</span>文字
+          <TextIcon size={19} />
+          文字
         </button>
         <button
           className={tool === "draw" ? "tool active" : "tool"}
           onClick={() => setTool(tool === "draw" ? "none" : "draw")}
         >
-          <span>🖌️</span>画笔
+          <BrushIcon size={19} />
+          画笔
         </button>
         <button className="tool" onClick={undo}>
-          <span>↩️</span>撤销
+          <UndoIcon size={19} />
+          撤销
         </button>
         <button className="tool" onClick={() => setExportOpen(true)}>
-          <span>⬇️</span>导出
+          <DownloadIcon size={19} />
+          导出
         </button>
       </div>
 
