@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 免费 Apple ID 自签名用 development；Ad Hoc / App Store 需付费账号 -->
+	<key>method</key>
+	<string>development</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>teamID</key>
+	<string>请填你的 Apple ID Team ID</string>
+</dict>
+</plist>

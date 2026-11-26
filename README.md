@@ -68,7 +68,9 @@ Worker 的额度走部署者自己的 Cloudflare 账号，项目不会内置任�
 
 ## 语音
 
-默认用浏览器自带的 Web Speech API（Chrome / Edge / Safari 支持较好），需要麦克风权限；不支持的浏览器退化为文字输入。在「偏好 → 语音输入」填了转写接口后，会改用 MediaRecorder 录音 + 服务端转写，不再依赖 Web Speech。
+优先级依次是：① 填了转写接口 → MediaRecorder 录音 + 服务端转写；② 浏览器自带 Web Speech（Chrome / Edge / Safari 支持较好，免下载）；③ 以上都不可用但能录音 → 点一下开始录、再点一下结束，用**本机 Whisper-tiny（q8）在设备上转写**，不上传也不花钱（首次下载模型约 60MB）；④ 都不能用才退化为文字输入。
+
+录音需要麦克风权限，且必须运行在安全上下文（HTTPS 或本机 App）里；被拒绝或不在 HTTPS 下都会给出明确提示。
 
 ## 数据
 
@@ -90,6 +92,103 @@ src/
 .html               首页设计参照（仅本地）
 drafts/-b.html      另一版方向草稿（仅本地）
 ```
+
+## 打包成手机 App（Android / iOS）
+
+项目已用 [Capacitor 8](https://capacitorjs.com/) 套壳成原生 App：`android/` 和 `ios/` 两个目录就是原生工程，网页内容放在各自的 `assets/public` / `App/public` 里。`capacitor.config.ts` 里 `appId` 是 `com.himwang.suikouji`，`appName` 是「随口记」。
+
+> 仓库里已经把两个原生工程和所需权限都提交好了。但**真正编译出安装包需要对应的工具链**：Android 需要 Windows/macOS/Linux + Java 17 + Android Studio；iOS 必须在 **macOS + Xcode** 上编译（Windows 上无法产出 IPA）。下面按平台分别说明。
+
+### 通用：先把网页同步进原生工程
+
+每次改完前端都要先构建，再把 `dist/` 拷进原生工程：
+
+```bash
+npm install
+npm run cap:sync        # = npm run build && cap sync
+```
+
+`cap sync` 会同时更新 Android 和 iOS 两个工程。只想重灌网页、不重新构建时可单独跑 `npx cap copy`。
+
+### Android：产出 APK
+
+1. 安装 [Android Studio](https://developer.android.com/studio)（自带 JDK 17 和 Android SDK）。
+2. 设置环境变量 `ANDROID_HOME`（或 `ANDROID_SDK_ROOT`）指向 SDK 目录，例如 Windows 上 `C:\Users\<你>\AppData\Local\Android\Sdk`。
+3. 打开工程：`npx cap open android`（会用 Android Studio 打开 `android/`）。
+4. 等 Gradle 同步完成，菜单 **Build → Build Bundle(s) / APK(s) → Build APK(s)**。
+   - 调试包：`android/app/build/outputs/apk/debug/app-debug.apk`
+   - 正式包：先 **Build → Generate Signed Bundle / APK**，建一个 keystore，再用它签出 release APK。
+5. 手机开启「未知来源安装」，把 APK 传进去点安装即可。
+
+命令行出包（可选）：
+
+```bash
+cd android
+./gradlew assembleDebug      # macOS / Linux
+gradlew.bat assembleDebug    # Windows
+```
+
+**已配置权限**：`INTERNET`（拉模型）、`RECORD_AUDIO` / `MODIFY_AUDIO_SETTINGS`（语音）、`READ_EXTERNAL_STORAGE`（旧设备读图）。麦克风属于危险权限，App 首次录音时会弹系统授权框——这是正常行为，允许即可。
+
+### iOS：在 macOS 上编译 + 自签名安装
+
+iOS 无法在 Windows 上打包，以下步骤在一台 **Mac** 上完成。
+
+#### 前置条件
+
+- macOS + [Xcode](https://apps.apple.com/cn/app/xcode/id497799835)（App Store 安装，含 iOS SDK）+ Xcode Command Line Tools（`xcode-select --install`）。
+- 一个**免费的 Apple ID** 即可做自签名（不需要付费开发者账号）。
+
+#### 步骤
+
+1. 在 Mac 上 clone 仓库并安装依赖：
+
+   ```bash
+   git clone https://github.com/Him-Wang/vibe-account.git
+   cd vibe-account
+   npm install
+   npm run cap:sync
+   npx cap open ios        # 用 Xcode 打开 ios/App/App.xcworkspace
+   ```
+
+   注意：打开的是 `ios/App/App.xcworkspace`（Swift Package Manager 依赖），不是 `.xcodeproj`。
+
+2. 在 Xcode 里选中左侧 **App** target → **Signing & Capabilities**：
+   - 勾选 **Automatically manage signing**。
+   - **Team** 选 **Add a Team…** → 用你的 Apple ID 登录（免费账号即可）。
+   - **Bundle Identifier** 保持 `com.himwang.suikouji`；如果报「Identifier 已被占用」，改成你自己的唯一值，例如 `com.你的名字.suikouji`（同时改 `capacitor.config.ts` 的 `appId` 再 `cap sync`）。
+   - 在 **Info.plist** 里确认 `NSMicrophoneUsageDescription`（麦克风用途说明）存在——仓库已配好。
+
+3. 选择一台**真机**（USB 连上 iPhone，在 Xcode 顶部设备列表选它）。模拟器也能跑，但没有麦克风真实输入。
+
+4. 处理签名信任（免费账号的关键一步）：
+   - 首次点 **▶ Run** 编译安装时，Xcode 可能报 `Signing for "App" requires a development team` 或 `Failed to create provisioning profile`——确认第 2 步 Team 已选。
+   - 免费账号签名的 App 安装到真机后，首次打开会提示「不受信任的企业级开发者」。到 iPhone **设置 → 通用 → VPN 与设备管理（或「描述文件与设备管理」）→ 选你的 Apple ID → 信任**。
+   - 注意：**免费签名有效期只有 7 天**，到期后 App 会打不开，需要重新连 Mac 用 Xcode 跑一次（或重签）。付费 Apple Developer 账号（¥688/年）签发的 App 可上架且 1 年有效。
+
+5. 点 **▶ Run**（`Cmd+R`）编译并安装到手机。
+
+#### 导出 IPA（分发用）
+
+- 在 Xcode 菜单 **Product → Archive**，完成后在 Organizer 里 **Distribute App**。
+- 免费账号只能导出 **Development** 包给注册设备；要 Ad Hoc / App Store 分发需付费账号。
+- 也可以命令行导出：
+
+  ```bash
+  cd ios/App
+  xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+    -archivePath build/App.xcarchive archive
+  xcodebuild -exportArchive -archivePath build/App.xcarchive \
+    -exportPath build/Export -exportOptionsPlist exportOptions.plist
+  ```
+
+  导出前先把 `ios/App/exportOptions.plist` 里的 `teamID` 换成你自己的 Team ID（在 Xcode 的 Signing & Capabilities 里能看到）。
+
+#### iOS 上的注意点
+
+- 语音和本地 Whisper 需要麦克风权限，首次使用会弹系统授权；拒绝后到 **设置 → 隐私与安全性 → 麦克风** 里重新允许。
+- 首次抠图/语音会从 Hugging Face 下载模型（94–183MB / 60MB），需要联网；之后缓存在 App 内。
+- `capacitor.config.ts` 用 `iosScheme: "capacitor"`，`WASM`/`fetch` 在 App 内可用；不要改成 `file://`，否则模型下载会失败。
 
 ## 说明
 
