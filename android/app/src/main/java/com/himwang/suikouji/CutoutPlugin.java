@@ -97,39 +97,42 @@ public class CutoutPlugin extends Plugin {
                 input[2 * n + i] = (b - MEAN[2]) / STD[2];
             }
 
-            float[] logits;
+            float[] maskData = new float[n];
             try (OnnxTensor tensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(input),
                     new long[]{1, 3, SIZE, SIZE});
                  OrtSession.Result results = s.run(java.util.Collections.singletonMap(s.getInputNames().iterator().next(), tensor))) {
-                // ORT Java returns a nested array for a [1,1,320,320] tensor.
-                // Drill down to the innermost float[] regardless of rank.
-                Object value = results.get(0).getValue();
-                while (value instanceof Object[] arr) {
-                    value = arr.length > 0 ? arr[0] : null;
-                    if (value == null) throw new IllegalStateException("empty model output");
+                // The model output is a [1,1,320,320] tensor.
+                //
+                // DO NOT use getValue() here. ORT Java materialises a 4-D
+                // float[][][][] carrier, and drilling into arr[0] at each level
+                // (the old implementation) ends up with a single float[320] row.
+                // Copying that into the mask left the other 102080 pixels at 0,
+                // so min-max normalisation turned the whole product transparent.
+                //
+                // getFloatBuffer() returns the complete flat buffer instead.
+                OnnxTensor output = (OnnxTensor) results.get(0);
+                FloatBuffer buffer = output.getFloatBuffer();
+                if (buffer.remaining() < n) {
+                    throw new IllegalStateException(
+                            "unexpected model output size: " + buffer.remaining() + ", expected " + n);
                 }
-                if (!(value instanceof float[] flat)) {
-                    throw new IllegalStateException("unexpected model output: " + value.getClass());
-                }
-                logits = new float[n];
-                System.arraycopy(flat, 0, logits, 0, Math.min(n, flat.length));
+                buffer.get(maskData, 0, n);
             }
 
-            float lo = Float.MAX_VALUE, hi = -Float.MAX_VALUE;
-            for (float v : logits) {
-                if (v < lo) lo = v;
-                if (v > hi) hi = v;
-            }
-            float span = Math.max(hi - lo, 1e-6f);
-
+            // u2netp bakes sigmoid into the graph: every value is already a
+            // foreground probability in [0,1]. Use it directly as alpha so a
+            // homogeneous image cannot be stretched into a noise mask by
+            // min-max normalisation.
             int[] outPixels = new int[n];
             for (int i = 0; i < n; i++) {
                 int x = i % SIZE;
                 int y = i / SIZE;
                 int sx = x * src.getWidth() / SIZE;
                 int sy = y * src.getHeight() / SIZE;
-                int alpha = Math.round(((logits[i] - lo) / span) * 255f);
-                alpha = Math.max(0, Math.min(255, alpha));
+                float p = maskData[i];
+                if (p < 0f) p = 0f;
+                if (p > 1f) p = 1f;
+                int alpha = Math.round(p * 255f);
                 outPixels[i] = (alpha << 24) | (src.getPixel(sx, sy) & 0x00ffffff);
             }
             Bitmap mask = Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888);
